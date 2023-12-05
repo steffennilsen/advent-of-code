@@ -13,18 +13,19 @@ pub fn main() !void {
 }
 
 pub fn parseLine(line: []const u8) !u32 {
-    var digits = [_]u8{ 0, 0 };
+    var digits: ?[2]u8 = null;
 
     for (line) |c| {
         if (std.ascii.isDigit(c)) {
-            if (digits[0] == 0) {
-                digits[0] = c;
+            if (digits == null) {
+                digits = [_]u8{ c, c };
+                digits.?[0] = c;
             }
-            digits[1] = c;
+            digits.?[1] = c;
         }
     }
 
-    return std.fmt.parseInt(u32, &[_]u8{ digits[0], digits[1] }, 10);
+    return std.fmt.parseInt(u32, &[_]u8{ digits.?[0], digits.?[1] }, 10);
 }
 
 test "line1" {
@@ -49,4 +50,10 @@ test "line4" {
     const line: []const u8 = "treb7uchet";
     const actual = comptime try parseLine(line);
     try std.testing.expectEqual(77, actual);
+}
+
+test "zero" {
+    const line: []const u8 = "treb7uc0he4t";
+    const actual = comptime try parseLine(line);
+    try std.testing.expectEqual(74, actual);
 }
