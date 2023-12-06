@@ -3,16 +3,16 @@ const data = @embedFile("./1");
 
 pub fn main() !void {
     var lines = std.mem.tokenize(u8, data, "\n");
-    var sumPart1: u64 = 0;
-    var sumPart2: u64 = 0;
+    var sumP1: u64 = 0;
+    var sumP2: u64 = 0;
 
     while (lines.next()) |line| {
-        sumPart1 = sumPart1 + try parseLinePart1(line);
-        sumPart2 = sumPart2 + try parseLinePart2(line);
+        sumP1 = sumP1 + try parseLinePart1(line);
+        sumP2 = sumP2 + try parseLinePart2(line);
     }
 
-    std.debug.print("part 1: {d}\n", .{sumPart1});
-    std.debug.print("part 2: {d}\n", .{sumPart2});
+    std.debug.print("part 1: {d}\n", .{sumP1});
+    std.debug.print("part 2: {d}\n", .{sumP2});
 }
 
 fn parseLinePart1(line: []const u8) !u32 {
