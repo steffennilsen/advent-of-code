@@ -25,17 +25,8 @@ fn parseGame(line: []const u8) !usize {
     const id = try std.fmt.parseInt(usize, idSlice, 10);
     std.debug.print("{d}]", .{id});
 
-    // init array list to
-    const gameSets = std.ArrayList(GameSet).init(std.heap.page_allocator);
-    defer gameSets.deinit();
-
-    // first set
-    var lineSlice = line[(idEnd.? + 1)..line.len];
-    var setEnd = std.mem.indexOf(u8, lineSlice, ";");
-    var gameSlice = lineSlice[0 .. (setEnd.?) + 1];
-    std.debug.print("{s}", .{gameSlice});
-
-    // while (setEnd != 0) {}
+    const setsSplice = line[idEnd.?..line.len];
+    std.debug.print("{s}", .{setsSplice});
 
     std.debug.print("\n", .{});
     return 1;
