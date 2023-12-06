@@ -15,7 +15,7 @@ pub fn main() !void {
     std.debug.print("part 2: {d}\n", .{sumPart2});
 }
 
-pub fn parseLinePart1(line: []const u8) !u32 {
+fn parseLinePart1(line: []const u8) !u32 {
     var digits = [_]u8{ 0, 0 };
 
     for (line) |c| {
