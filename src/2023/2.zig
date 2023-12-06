@@ -4,13 +4,16 @@ const data = @embedFile("./2");
 pub fn main() !void {
     var lines = std.mem.tokenize(u8, data, "\n");
     var sumP1: usize = 0;
+    var sumP2: usize = 0;
 
     while (lines.next()) |line| {
         const game = try parseGame(line);
         sumP1 = sumP1 + game.p1;
+        sumP2 = sumP2 + game.p2;
     }
 
     std.debug.print("part 1: {d}\n", .{sumP1});
+    std.debug.print("part 2: {d}\n", .{sumP2});
 }
 
 const GameStats = struct {
@@ -39,6 +42,11 @@ fn parseGame(line: []const u8) !GameStats {
     const id = try std.fmt.parseInt(usize, idSlice, 10);
 
     var gameStats = GameStats{ .p1 = id, .p2 = 0 };
+    var minDices = GameSet{
+        .blue = 0,
+        .green = 0,
+        .red = 0,
+    };
 
     var setIt = std.mem.splitSequence(u8, line[(idEnd.? + 1)..line.len], ";");
     while (setIt.next()) |setSlice| {
@@ -63,10 +71,19 @@ fn parseGame(line: []const u8) !GameStats {
 
             if (std.mem.eql(u8, cSplice.?, "red")) {
                 setDices.red = q;
+                if (minDices.red < q) {
+                    minDices.red = q;
+                }
             } else if (std.mem.eql(u8, cSplice.?, "green")) {
                 setDices.green = q;
+                if (minDices.green < q) {
+                    minDices.green = q;
+                }
             } else if (std.mem.eql(u8, cSplice.?, "blue")) {
                 setDices.blue = q;
+                if (minDices.blue < q) {
+                    minDices.blue = q;
+                }
             } else {
                 unreachable;
             }
@@ -76,6 +93,9 @@ fn parseGame(line: []const u8) !GameStats {
             gameStats.p1 = 0;
         }
     }
+
+    // note no multiply 0 guard, dataset doesnt need it
+    gameStats.p2 = minDices.blue * minDices.green * minDices.red;
 
     return gameStats;
 }
