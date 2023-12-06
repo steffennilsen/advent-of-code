@@ -47,7 +47,7 @@ const NUMBERS = [_][]const u8{
 pub fn parseLinePart2(line: []const u8) !u32 {
     var digits = [_]u8{ 0, 0 };
 
-    for (line, 0..) |c, i| {
+    for (line, 0..) |c, cursorPos| {
         switch (c) {
             '0'...'9' => {
                 if (digits[0] == 0) {
@@ -58,9 +58,9 @@ pub fn parseLinePart2(line: []const u8) !u32 {
             },
             'a'...'z' => {
                 numbers: for (NUMBERS, 0..) |haystack, n| {
-                    if (i + haystack.len <= line.len) {
-                        const end = @min(i + haystack.len, line.len);
-                        const slice = line[i..end];
+                    if (cursorPos + haystack.len <= line.len) {
+                        const end = @min(cursorPos + haystack.len, line.len);
+                        const slice = line[cursorPos..end];
 
                         if (std.mem.eql(u8, haystack, slice)) {
                             if (digits[0] == 0) {
