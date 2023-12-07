@@ -58,14 +58,12 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
             var line = std.math.ceil(index / self.width);
             var cursor = index % self.width;
             const slice = self.rest();
+            _ = slice;
             var sn: ?SchematicNumber = null;
 
-            for (slice) |c| {
+            for (0..self.buffer.len) |i| {
+                const c = self.buffer[i];
                 switch (c) {
-                    '\n' => {
-                        line += 1;
-                    },
-                    '.' => {},
                     '0'...'9' => {
                         if (sn == null) {
                             sn = SchematicNumber{
@@ -75,6 +73,10 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
                         }
                     },
                     else => {},
+                }
+
+                if (c == '\n') {
+                    line += 1;
                 }
 
                 index += 1;
