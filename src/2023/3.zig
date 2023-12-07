@@ -4,21 +4,26 @@ const testData: []const u8 = @embedFile("./3.test");
 
 pub fn main() !void {
     const stats = getDataStats(testData);
-    const slice1 = data[0..stats.lineWidth];
-    const slice2 = data[stats.lineWidth..(stats.lineWidth * 2)];
+    const slice1 = testData[0..stats.width];
+    const slice2 = testData[stats.width..(stats.width * 2)];
 
-    std.debug.print("lineCount: {d}\n", .{stats.lineCount});
-    std.debug.print("lineWidth (including \\n): {d}\n", .{stats.lineWidth});
+    std.debug.print("height: {d}\n", .{stats.height});
+    std.debug.print("width (including \\n): {d}\n", .{stats.width});
 
     std.debug.print("###\n", .{});
     std.debug.print("{s}", .{slice1});
     std.debug.print("{s}", .{slice2});
     std.debug.print("###\n", .{});
+
+    const it = SchematicIterator(u8, stats.height, stats.width);
+    for (it.next()) |d| {
+        std.debug.print("{any}", .{d});
+    }
 }
 
 const DataStats = struct {
-    lineCount: usize,
-    lineWidth: usize,
+    height: usize,
+    width: usize,
 };
 
 fn getDataStats(buffer: []const u8) DataStats {
@@ -30,7 +35,7 @@ fn getDataStats(buffer: []const u8) DataStats {
 
 // using std.mem.TokenIterator as example
 fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
-    return struct {
+    return comptime struct {
         buffer: []const T,
         index: usize = 0,
         height: height,
@@ -212,8 +217,8 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
 
 test "getDataStats" {
     const actual = comptime getDataStats(testData);
-    try std.testing.expectEqual(10, actual.lineCount);
-    try std.testing.expectEqual(11, actual.lineWidth);
+    try std.testing.expectEqual(10, actual.height);
+    try std.testing.expectEqual(11, actual.width);
 }
 
 // test "part1" {
