@@ -34,12 +34,10 @@ fn getDataStats(buffer: []const u8) DataStats {
 }
 
 // using std.mem.TokenIterator as example
-fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
-    return comptime struct {
+fn SchematicIterator(comptime T: type) type {
+    return struct {
         buffer: []const T,
         index: usize = 0,
-        height: height,
-        width: width,
 
         const Self = @This();
 
