@@ -3,7 +3,7 @@ const data: []const u8 = @embedFile("./3");
 const testData: []const u8 = @embedFile("./3.test");
 
 pub fn main() !void {
-    const stats = getDataStats(data);
+    const stats = getDataStats(testData);
     const slice1 = data[0..stats.lineWidth];
     const slice2 = data[stats.lineWidth..(stats.lineWidth * 2)];
 
@@ -216,4 +216,6 @@ test "getDataStats" {
     try std.testing.expectEqual(11, actual.lineWidth);
 }
 
-test "part1" {}
+// test "part1" {
+
+// }
