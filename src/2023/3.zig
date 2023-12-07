@@ -38,6 +38,41 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
 
         const Self = @This();
 
+        const Direction = enum {
+            ne,
+            n,
+            nw,
+            e,
+            w,
+            se,
+            s,
+            sw,
+
+            pub fn isSouth(self: Direction) bool {
+                return self == Direction.se or
+                    self == Direction.s or
+                    self == Direction.sw;
+            }
+
+            pub fn isNorth(self: Direction) bool {
+                return self == Direction.ne or
+                    self == Direction.n or
+                    self == Direction.nw;
+            }
+
+            pub fn isEast(self: Direction) bool {
+                return self == Direction.ne or
+                    self == Direction.e or
+                    self == Direction.se;
+            }
+
+            pub fn isWest(self: Direction) bool {
+                return self == Direction.nw or
+                    self == Direction.w or
+                    self == Direction.sw;
+            }
+        };
+
         const SchematicNumber = struct {
             start: usize = 0,
             end: usize = 0,
@@ -54,34 +89,55 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
         }
 
         pub fn peek(self: *Self) ?SchematicNumber {
-            var index = self.index;
-            var line = std.math.ceil(index / self.width);
-            var cursor = index % self.width;
-            const slice = self.rest();
-            _ = slice;
+            var cursor = self.index % self.width;
+            _ = cursor;
             var sn: ?SchematicNumber = null;
 
-            for (0..self.buffer.len) |i| {
+            for ((self.index)..(self.buffer.len)) |i| {
                 const c = self.buffer[i];
                 switch (c) {
                     '0'...'9' => {
                         if (sn == null) {
-                            sn = SchematicNumber{
-                                .start = index,
-                                .line = line,
-                            };
+                            const line = std.math.ceil(i / self.width);
+                            sn = SchematicNumber{ .start = i, .line = line };
+
+                            // east
+                            const vi = self.getValidIndices(i, Direction{ Direction.ne, Direction.e, Direction.se });
+                            if (vi != null) {
+                                sn.?.validIndex = vi;
+                            }
+                        }
+
+                        if (sn.?.validIndex == null) {
+                            // north, south
+                            const vi = self.getValidIndices(i, Direction{ Direction.n, Direction.s });
+                            if (vi != null) {
+                                sn.?.validIndex = vi;
+                            }
                         }
                     },
-                    else => {},
-                }
+                    else => {
+                        if (sn != null) {
+                            // we have a number
+                            sn.?.end = i;
+                            const nSlice = self.buffer[sn.?.start..sn.?.end];
+                            sn.?.value = std.fmt.parseUnsigned(T, nSlice, 10);
 
-                if (c == '\n') {
-                    line += 1;
-                }
+                            if (sn.?.validIndex == null) {
+                                // west
+                                const vi = self.getValidIndices(i, Direction{ Direction.nw, Direction.w, Direction.sw });
+                                if (vi != null) {
+                                    sn.?.validIndex = vi;
+                                }
+                            }
 
-                index += 1;
-                cursor = index % self.width;
+                            return sn;
+                        }
+                    },
+                }
             }
+
+            return null;
         }
 
         pub fn rest(self: *Self) []const T {
@@ -92,62 +148,64 @@ fn SchematicIterator(comptime T: type, height: usize, width: usize) type {
             self.index = 0;
         }
 
-        pub fn isSymbol(c: T) bool {
-            switch (c) {
-                '.' or '0'...'9' => return false,
-                else => return true,
+        /// returns first index that is valid
+        pub fn getValidIndices(self: *Self, index: usize, directions: []self.Direction) ?usize {
+            for (directions) |d| {
+                const v = self.getValidDirectionIndex(index, d);
+
+                if (v != null) {
+                    return v;
+                }
             }
+
+            return null;
         }
 
-        pub fn getInBoundsIndices(self: *Self, index: usize) []usize {
+        pub fn getValidDirectionIndex(self: *Self, index: usize, direction: self.Direction) ?usize {
             const line = std.math.ceil(index / self.width);
+            if ((line == 0 and direction.isNorth()) or
+                (line == self.height and direction.isSouth()))
+            {
+                return null;
+            }
+
+            if (line == self.height and direction.isSouth()) {
+                return null;
+            }
+
             const cursor = index % self.width;
-            const indices: [8]usize = {};
-            var i = 0;
-
-            if (line > 0) {
-                if (cursor > 0) {
-                    // ne
-                    indices[i] = self.buffer[index - self.width - 1];
-                    i += 1;
-                }
-
-                // n
-                indices[i] = self.buffer[index - self.width];
-                i += 1;
-
-                if (cursor < self.width) {
-                    // nw
-                    indices[i] = self.buffer[index - self.width + 1];
-                    i += 1;
-                }
+            if (cursor == 0 and direction.isEast()) {
+                return null;
             }
 
-            if (cursor > 0) {
-                // w
+            if (cursor == self.width and direction.isWest()) {
+                return null;
             }
 
-            if (cursor < self.width) {
-                // e
-            }
-
-            if (line < self.height) {
-                // se
-                if (cursor > 0) {
-                    // ne
-                    indices[i] = self.buffer[index - self.width - 1];
-                    i += 1;
-                }
-                // s
-                // se
-            }
-
-            return indices[0..i];
+            return switch (direction) {
+                Direction.ne => index - self.width - 1,
+                Direction.n => index - self.width,
+                Direction.nw => index - self.width + 1,
+                Direction.e => index - 1,
+                Direction.w => index + 1,
+                Direction.se => index + self.width - 1,
+                Direction.s => index + self.width,
+                Direction.sw => index + self.width + 1,
+                else => unreachable,
+            };
         }
 
-        pub fn findSymbol(self: *Self, index: usize) ?usize {
-            _ = index;
-            _ = self;
+        /// finds valid symbols
+        pub fn isSymbol(self: *Self, index: usize, direction: self.Direction) ?usize {
+            const validIndex = self.getValidDirectionIndex(index, direction);
+            if (validIndex == null) {
+                return null;
+            }
+
+            return switch (self.buffer[validIndex.?]) {
+                '.' or '\n' or '0'...'9' => null,
+                else => validIndex,
+            };
         }
     };
 }
