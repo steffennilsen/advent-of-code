@@ -15,10 +15,17 @@ pub fn main() !void {
     std.debug.print("{s}", .{slice2});
     std.debug.print("###\n", .{});
 
-    const it = SchematicIterator(u8, stats.height, stats.width);
-    for (it.next()) |d| {
-        std.debug.print("{any}", .{d});
-    }
+    var it = SchematicIterator(u8){
+        .buffer = testData,
+        .height = stats.height,
+        .width = stats.width,
+    };
+
+    std.debug.print("{any}", .{it.peek()});
+
+    // for (it.next()) |d| {
+    //     std.debug.print("{any}", .{d});
+    // }
 }
 
 const DataStats = struct {
@@ -28,15 +35,17 @@ const DataStats = struct {
 
 fn getDataStats(buffer: []const u8) DataStats {
     return DataStats{
-        .lineCount = std.mem.count(u8, buffer, "\n") + 1,
-        .lineWidth = std.mem.indexOf(u8, buffer, "\n").? + 1,
+        .height = std.mem.count(u8, buffer, "\n") + 1,
+        .width = std.mem.indexOf(u8, buffer, "\n").? + 1,
     };
 }
 
 // using std.mem.TokenIterator as example
-fn SchematicIterator(comptime T: type) type {
+pub fn SchematicIterator(comptime T: type) type {
     return struct {
         buffer: []const T,
+        height: usize,
+        width: usize,
         index: usize = 0,
 
         const Self = @This();
@@ -81,7 +90,7 @@ fn SchematicIterator(comptime T: type) type {
             end: usize = 0,
             value: usize = 0,
             line: usize = 0,
-            validIndex: ?usize,
+            validIndex: ?usize = null,
         };
 
         pub fn next(self: *Self) ?SchematicNumber {
@@ -101,11 +110,11 @@ fn SchematicIterator(comptime T: type) type {
                 switch (c) {
                     '0'...'9' => {
                         if (sn == null) {
-                            const line = std.math.ceil(i / self.width);
+                            const line = i / self.width;
                             sn = SchematicNumber{ .start = i, .line = line };
 
                             // east
-                            const vi = self.getValidIndices(i, Direction{ Direction.ne, Direction.e, Direction.se });
+                            const vi = self.getValidIndices(i, [_]Direction{ Direction.ne, Direction.e, Direction.se });
                             if (vi != null) {
                                 sn.?.validIndex = vi;
                             }
@@ -136,8 +145,15 @@ fn SchematicIterator(comptime T: type) type {
 
                             return sn;
                         }
+
+                        if (c == '\n') {
+                            self.line += 1;
+                            self.cursor = 0;
+                        }
                     },
                 }
+
+                self.cursor += 1;
             }
 
             return null;
@@ -152,7 +168,7 @@ fn SchematicIterator(comptime T: type) type {
         }
 
         /// returns first index that is valid
-        pub fn getValidIndices(self: *Self, index: usize, directions: []self.Direction) ?usize {
+        pub fn getValidIndices(self: *Self, index: usize, directions: []Direction) ?usize {
             for (directions) |d| {
                 const v = self.getValidDirectionIndex(index, d);
 
