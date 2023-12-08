@@ -2,74 +2,68 @@ const std = @import("std");
 const data: []const u8 = @embedFile("./3");
 const testData: []const u8 = @embedFile("./3.test");
 
+const dataSize: usize = 140;
+const testSize: usize = 10;
+
 pub fn main() !void {
-    const stats = getDataStats(testData);
-    const slice1 = testData[0..stats.width];
-    _ = slice1;
-    const slice2 = testData[stats.width..(stats.width * 2)];
-    _ = slice2;
+    var sumPartNumbers: usize = 0;
 
-    // std.debug.print("height: {d}\n", .{stats.height});
-    // std.debug.print("width (including \\n): {d}\n", .{stats.width});
-
-    // std.debug.print("###\n", .{});
-    // std.debug.print("{s}", .{slice1});
-    // std.debug.print("{s}", .{slice2});
-    // std.debug.print("###\n", .{});
-
-    var it = SchematicIterator(u8){
-        .buffer = testData,
-        .height = stats.height,
-        .width = stats.width,
-    };
-    // std.debug.print("it: {any}\n", .{it});
-    // std.debug.print("peek: {any}\n", .{it.peek()});
-    // std.debug.print("###\n", .{});
-    // std.debug.print("it: {any}\n", .{it});
-
+    var it = SchemaScanner(u8, data, dataSize);
     while (it.next()) |n| {
-        std.debug.print("{}\n", .{n});
-        // std.debug.print("peek: {any}\n", .{it.peek()});
-        // std.debug.print("\n", .{});
-        // std.debug.print("###\n", .{});
+        if (n.valid == null) {
+            std.debug.print("[{d}:{d}]: {d}\n", .{ n.line, n.cursor, n.value });
+            sumPartNumbers += n.value;
+        } else {
+            std.debug.print("[{d}:{d}]: {d} {c}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol });
+        }
     }
 
-    // std.debug.print("peek: {any}\n", .{it.peek()});
-
-    // for (it.next()) |d| {
-    //     std.debug.print("{any}", .{d});
-    // }
+    std.debug.print("part 1: {d}\n", .{sumPartNumbers});
 }
 
-const DataStats = struct {
-    height: usize,
-    width: usize,
-};
-
-fn getDataStats(buffer: []const u8) DataStats {
-    return DataStats{
-        .height = std.mem.count(u8, buffer, "\n") + 1,
-        .width = std.mem.indexOf(u8, buffer, "\n").? + 1,
+pub fn SchemaScanner(comptime T: type, buffer: []const T, size: usize) SchemaIterator(T) {
+    return .{
+        .buffer = buffer,
+        .index = 0,
+        .size = size,
     };
 }
 
-// using std.mem.TokenIterator as example
-pub fn SchematicIterator(comptime T: type) type {
+pub fn SchemaIterator(comptime T: type) type {
     return struct {
         buffer: []const T,
-        height: usize,
-        width: usize,
-        index: usize = 0,
+        index: usize,
+        size: usize,
         line: usize = 0,
         cursor: usize = 0,
 
         const Self = @This();
+
+        const SchemaNumber = struct {
+            start: usize = 0,
+            end: usize = 0,
+            line: usize = 0,
+            cursor: usize = 0,
+            value: usize = 0,
+            slice: ?[]const T = null,
+            valid: ?SchemaSymbol = null,
+        };
+
+        const SchemaSymbol = struct {
+            index: usize = 0,
+            symbol: T,
+        };
+
+        const WEST = [_]Direction{ Direction.nw, Direction.w, Direction.sw };
+        const NORTH_SOUTH = [_]Direction{ Direction.n, Direction.s };
+        const NORTH_SOUTH_CENTER = [_]Direction{ Direction.n, Direction.s, Direction.c };
 
         const Direction = enum {
             ne,
             n,
             nw,
             e,
+            c,
             w,
             se,
             s,
@@ -100,79 +94,75 @@ pub fn SchematicIterator(comptime T: type) type {
             }
         };
 
-        const SchematicNumber = struct {
-            start: usize = 0,
-            end: usize = 0,
-            value: usize = 0,
-            line: usize = 0,
-            cursor: usize = 0,
-            validIndex: ?usize = null,
-        };
-
-        pub fn next(self: *Self) ?SchematicNumber {
+        pub fn next(self: *Self) ?SchemaNumber {
             const result = self.peek() orelse return null;
             self.index = result.end;
             self.line = result.line;
-            self.cursor = result.cursor;
+            self.cursor = result.slice.?.len + result.cursor;
             return result;
         }
 
-        pub fn peek(self: *Self) ?SchematicNumber {
-            var cursor = self.cursor;
-            var line = self.line;
-            var sn: ?SchematicNumber = null;
+        pub fn nextValid(self: *Self) ?SchemaNumber {
+            const result = self.peekValid() orelse return null;
+            self.index = result.end;
+            self.line = result.line;
+            self.cursor = result.slice.?.len + result.cursor;
+            return result;
+        }
 
-            for ((self.index)..(self.buffer.len)) |i| {
+        pub fn peekValid(self: *Self) ?SchemaNumber {
+            while (self.peek()) |n| {
+                if (n.valid != null) {
+                    return n;
+                } else {
+                    _ = self.next();
+                }
+            }
+
+            return null;
+        }
+
+        pub fn peek(self: *Self) ?SchemaNumber {
+            var line = self.line;
+            var cursor = self.cursor;
+            var sn: ?SchemaNumber = null;
+            var ss: ?SchemaSymbol = null;
+
+            for (self.index..self.buffer.len) |i| {
                 const c = self.buffer[i];
-                // std.debug.print("{c}", .{c});
+
                 switch (c) {
                     '0'...'9' => {
                         if (sn == null) {
-                            sn = SchematicNumber{ .start = i, .line = line };
-
-                            // west
-                            const directions = [_]Direction{ Direction.nw, Direction.w, Direction.sw };
-                            const vi = self.getValidIndices(i, &directions);
-                            std.debug.print("w {c}, i:{d}, vi: {?}\n", .{ c, i, vi });
-                            if (vi != null) {
-                                sn.?.validIndex = vi;
-                            }
+                            sn = SchemaNumber{ .start = i };
+                            ss = self.peekSymbolMultiple(i, &WEST);
                         }
 
-                        // if (sn.?.validIndex == null) {
-                        // north, south
-                        const directions = [_]Direction{ Direction.n, Direction.s };
-                        const vi = self.getValidIndices(i, &directions);
-                        std.debug.print("ns0 {c}, i:{d}, vi: {?}\n", .{ c, i, vi });
-                        if (vi != null) {
-                            sn.?.validIndex = vi;
+                        if (ss == null) {
+                            ss = self.peekSymbolMultiple(i, &NORTH_SOUTH);
                         }
-                        // }
                     },
                     else => {
                         if (sn != null) {
-                            // we have a number
+                            // reached end of number
                             sn.?.end = i;
-                            var nSlice = self.buffer[sn.?.start..sn.?.end];
-                            // std.debug.print("{s}", .{nSlice});
-                            sn.?.value = std.fmt.parseUnsigned(usize, nSlice, 10) catch 0;
-                            std.debug.print("{d}\n", .{sn.?.value});
+                            sn.?.line = line;
 
-                            if (sn.?.validIndex == null) {
-                                // // east
-                                // const directions = [_]Direction{ Direction.ne, Direction.e, Direction.se };
-                                // north, south
-                                // const directions = [_]Direction{ Direction.n, Direction.s };
-                                const directions = [_]Direction{ Direction.n, Direction.s, Direction.ne, Direction.e, Direction.se };
-                                const vi = self.getValidIndices(i, &directions);
-                                // std.debug.print("e {c}, i:{d}, vi: {?}\n", .{ c, i, vi });
-                                // std.debug.print("ns {c}, i:{d}, vi: {?}\n", .{ c, i, vi });
-                                std.debug.print("ns/e {c}, i:{d}, vi: {?}\n", .{ c, i, vi });
-                                if (vi != null) {
-                                    sn.?.validIndex = vi;
-                                }
+                            const slice = self.buffer[sn.?.start..sn.?.end];
+                            sn.?.slice = slice;
+                            sn.?.value = std.fmt.parseUnsigned(usize, slice, 10) catch std.math.maxInt(usize);
+
+                            if (line == 0) {
+                                sn.?.cursor = cursor - slice.len;
+                            } else {
+                                sn.?.cursor = cursor - slice.len - 1;
                             }
 
+                            if (ss == null) {
+                                ss = self.peekSymbolMultiple(i, &NORTH_SOUTH_CENTER);
+                            }
+
+                            sn.?.valid = ss;
                             return sn;
                         }
 
@@ -189,104 +179,47 @@ pub fn SchematicIterator(comptime T: type) type {
             return null;
         }
 
-        pub fn rest(self: *Self) []const T {
-            return self.buffer[(self.index)..(self.buffer.len)];
-        }
-
-        pub fn reset(self: *Self) void {
-            self.index = 0;
-        }
-
-        /// returns first index that is valid
-        pub fn getValidIndices(self: *Self, index: usize, directions: []const Direction) ?usize {
-            std.debug.print("$$ {any}\n", .{directions});
-
+        pub fn peekSymbolMultiple(self: *Self, index: usize, directions: []const Direction) ?SchemaSymbol {
             for (directions) |d| {
-                std.debug.print("!!d:{}\n", .{d});
-
-                const v = self.getValidDirectionIndex(index, d);
-                std.debug.print("index: {d}, v:{?}, d:{}\n", .{ index, v, d });
-
-                if (v != null) {
-                    const vi = self.isSymbol(v.?, d);
-
-                    if (vi != null) {
-                        std.debug.print("index: {d}, vi:{?}, d:{}\n", .{ index, vi, d });
-                        return vi;
-                    }
+                const symbol = self.peekSymbol(index, d);
+                if (symbol != null) {
+                    return symbol;
                 }
             }
 
             return null;
         }
 
-        pub fn getValidDirectionIndex(self: *Self, index: usize, direction: Direction) ?usize {
-            const line = index / self.width;
-            if (line == 0 and direction.isNorth()) {
-                std.debug.print("^^N", .{});
-                return null;
-            }
+        pub fn peekSymbol(self: *Self, index: usize, d: Direction) ?SchemaSymbol {
+            const castedIndex = @as(isize, @intCast(index));
+            const castedSize = @as(isize, @intCast(self.size));
 
-            if (line == self.height and direction.isSouth()) {
-                std.debug.print("^^S", .{});
-                return null;
-            }
+            const peekIndex = switch (d) {
+                Direction.ne => @max(0, castedIndex - castedSize - 1),
+                Direction.n => @max(0, castedIndex - castedSize - 1),
+                Direction.nw => @max(0, castedIndex - castedSize - 2),
+                Direction.e => @min(self.buffer.len - 1, index + 1),
+                Direction.c => index,
+                Direction.w => @min(0, index - 1),
+                Direction.se => @min(self.buffer.len - 1, index + self.size + 2),
+                Direction.s => @min(self.buffer.len - 1, index + self.size + 1),
+                Direction.sw => @min(self.buffer.len - 1, index + self.size + 1),
+            };
 
-            const cursor = index % self.width;
-            if (cursor == 0 and direction.isWest()) {
-                std.debug.print("^^W", .{});
-                return null;
-            }
-
-            if (cursor == self.width and direction.isEast()) {
-                std.debug.print("^^E", .{});
-                return null;
-            }
-
-            return switch (direction) {
-                Direction.ne => index - self.width - 1,
-                Direction.n => index - self.width,
-                Direction.nw => index - self.width - 1,
-                Direction.e => index - 1,
-                Direction.w => index - 1,
-                Direction.se => index + self.width - 1,
-                Direction.s => index + self.width,
-                Direction.sw => index + self.width - 1,
+            const c = self.buffer[peekIndex];
+            // std.debug.print("{d}:{d} '{c}' {}\n", .{ index, peekIndex, c, d });
+            return switch (c) {
+                '\n' => null,
+                '.' => null,
+                '0'...'9' => null,
+                else => SchemaSymbol{ .index = peekIndex, .symbol = c },
             };
         }
 
-        /// finds valid symbols
-        pub fn isSymbol(self: *Self, index: usize, direction: Direction) ?usize {
-            // const validIndex = self.getValidDirectionIndex(index, direction);
-            // if (validIndex == null) {
-            //     return null;
-            // }
-
-            // const c = self.buffer[validIndex.?];
-            const c = self.buffer[index];
-            // std.debug.print("@@index: {d}, vi: {d}, c: {c}\n", .{ index, validIndex.?, c });
-            std.debug.print("@@index: {d}, c: {c}, d: {d}\n", .{ index, c, c });
-
-            return switch (c) {
-                46 => null,
-                10 => null,
-                48...57 => null,
-                else => {
-                    // std.debug.print("#index: {d}, c: {c}, validIndex:{?}, d:{}\n", .{ index, c, validIndex, direction });
-                    std.debug.print("#index: {d}, c: {c}, d:{}\n", .{ index, c, direction });
-                    return index;
-                },
-            };
+        pub fn reset(self: *Self) ?SchemaNumber {
+            self.index = 0;
         }
     };
 }
 
-test "getDataStats" {
-    const actual = comptime getDataStats(testData);
-    try std.testing.expectEqual(10, actual.height);
-    try std.testing.expectEqual(11, actual.width);
-}
-
-// test "part1" {
-
-// }
+test "part1" {}
