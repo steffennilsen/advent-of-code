@@ -12,9 +12,9 @@ pub fn main() !void {
     while (it.next()) |n| {
         if (n.valid == null) {
             std.debug.print("[{d}:{d}]: {d}\n", .{ n.line, n.cursor, n.value });
-            sumPartNumbers += n.value;
         } else {
             std.debug.print("[{d}:{d}]: {d} {c}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol });
+            sumPartNumbers += n.value;
         }
     }
 
@@ -176,6 +176,30 @@ pub fn SchemaIterator(comptime T: type) type {
                 cursor += 1;
             }
 
+            if (sn != null) {
+                // end of file, but we have a number waiting
+                // just copying above for now
+                sn.?.end = self.buffer.len;
+                sn.?.line = line;
+
+                const slice = self.buffer[sn.?.start..sn.?.end];
+                sn.?.slice = slice;
+                sn.?.value = std.fmt.parseUnsigned(usize, slice, 10) catch std.math.maxInt(usize);
+
+                if (line == 0) {
+                    sn.?.cursor = cursor - slice.len;
+                } else {
+                    sn.?.cursor = cursor - slice.len - 1;
+                }
+
+                if (ss == null) {
+                    ss = self.peekSymbolMultiple(sn.?.end - 1, &NORTH_SOUTH_CENTER);
+                }
+
+                sn.?.valid = ss;
+                return sn;
+            }
+
             return null;
         }
 
@@ -191,28 +215,33 @@ pub fn SchemaIterator(comptime T: type) type {
         }
 
         pub fn peekSymbol(self: *Self, index: usize, d: Direction) ?SchemaSymbol {
-            const castedIndex = @as(isize, @intCast(index));
-            const castedSize = @as(isize, @intCast(self.size));
+            const cIndex: isize = @intCast(index);
+            const size: isize = @intCast(self.size);
 
-            const peekIndex = switch (d) {
-                Direction.ne => @max(0, castedIndex - castedSize - 1),
-                Direction.n => @max(0, castedIndex - castedSize - 1),
-                Direction.nw => @max(0, castedIndex - castedSize - 2),
-                Direction.e => @min(self.buffer.len - 1, index + 1),
-                Direction.c => index,
-                Direction.w => @min(0, index - 1),
-                Direction.se => @min(self.buffer.len - 1, index + self.size + 2),
-                Direction.s => @min(self.buffer.len - 1, index + self.size + 1),
-                Direction.sw => @min(self.buffer.len - 1, index + self.size + 1),
+            const peekIndex: isize = switch (d) {
+                Direction.ne => cIndex - size - 1,
+                Direction.n => cIndex - size - 1,
+                Direction.nw => cIndex - size - 2,
+                Direction.e => cIndex + 1,
+                Direction.c => cIndex,
+                Direction.w => cIndex - 1,
+                Direction.se => cIndex + size + 2,
+                Direction.s => cIndex + size + 1,
+                Direction.sw => cIndex + size,
             };
 
-            const c = self.buffer[peekIndex];
-            // std.debug.print("{d}:{d} '{c}' {}\n", .{ index, peekIndex, c, d });
+            if (peekIndex < 0 or peekIndex > self.buffer.len - 1) {
+                return null;
+            }
+            const cPeekIndex: usize = @intCast(peekIndex);
+
+            const c = self.buffer[cPeekIndex];
+            // std.debug.print("{d}:{d} '{c}' {}\n", .{ index, cPeekIndex, c, d });
             return switch (c) {
                 '\n' => null,
                 '.' => null,
                 '0'...'9' => null,
-                else => SchemaSymbol{ .index = peekIndex, .symbol = c },
+                else => SchemaSymbol{ .index = cPeekIndex, .symbol = c },
             };
         }
 
@@ -221,5 +250,3 @@ pub fn SchemaIterator(comptime T: type) type {
         }
     };
 }
-
-test "part1" {}
