@@ -8,13 +8,17 @@ const testSize: usize = 10;
 pub fn main() !void {
     var sumPartNumbers: usize = 0;
 
-    var it = SchemaScanner(u8, data, dataSize);
+    var it = SchemaScanner(u8, testData, testSize);
     while (it.next()) |n| {
         if (n.valid == null) {
-            std.debug.print("[{d}:{d}]: {d}\n", .{ n.line, n.cursor, n.value });
+            // std.debug.print("[{d}:{d}]: {d}\n", .{ n.line, n.cursor, n.value });
         } else {
-            std.debug.print("[{d}:{d}]: {d} {c}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol });
+            // std.debug.print("[{d}:{d}]: {d} {c}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol });
             sumPartNumbers += n.value;
+
+            if (n.valid.?.symbol == '*') {
+                std.debug.print("[{d}:{d}]: {d} {c} {d}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol, n.valid.?.index });
+            }
         }
     }
 
