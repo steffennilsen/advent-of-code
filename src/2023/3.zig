@@ -6,23 +6,60 @@ const dataSize: usize = 140;
 const testSize: usize = 10;
 
 pub fn main() !void {
-    var sumPartNumbers: usize = 0;
+    var sumPart1: usize = 0;
+    var sumPart2: usize = 0;
 
-    var it = SchemaScanner(u8, testData, testSize);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    const Mapped = std.AutoArrayHashMap(usize, std.ArrayList(usize));
+    var map = Mapped.init(allocator);
+    defer map.deinit();
+    // const map = std.AutoArrayHashMap(usize, std.ArrayList(usize)).init(allocator);
+
+    var it = SchemaScanner(u8, data, dataSize);
     while (it.next()) |n| {
         if (n.valid == null) {
             // std.debug.print("[{d}:{d}]: {d}\n", .{ n.line, n.cursor, n.value });
         } else {
             // std.debug.print("[{d}:{d}]: {d} {c}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol });
-            sumPartNumbers += n.value;
+            sumPart1 += n.value;
 
             if (n.valid.?.symbol == '*') {
-                std.debug.print("[{d}:{d}]: {d} {c} {d}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol, n.valid.?.index });
+                // std.debug.print("[{d}:{d}]: {d} {c} {d}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol, n.valid.?.index });
+                const key = n.valid.?.index;
+
+                const v = try map.getOrPut(key);
+                if (!v.found_existing) {
+                    // std.debug.print("a {d}\n", .{key});
+                    var list = std.ArrayList(usize).init(allocator);
+                    v.value_ptr.* = list;
+                    // try map.put(n.valid.?.index, list);
+                }
+
+                // std.debug.print("b k {}] len {any}\n", .{ key, v.value_ptr.*.items });
+                try v.value_ptr.*.append(n.value);
+                // std.debug.print("c k {}] len {any}\n", .{ key, v.value_ptr.*.items });
+                // std.debug.print("[{d}:{d}]: {d} {c} {d}\n", .{ n.line, n.cursor, n.value, n.valid.?.symbol, v.value_ptr.*.items.len });
             }
         }
     }
 
-    std.debug.print("part 1: {d}\n", .{sumPartNumbers});
+    var it2 = map.iterator();
+    while (it2.next()) |e| {
+        const v: std.ArrayList(usize) = e.value_ptr.*;
+        var sum: usize = 0;
+        if (v.items.len == 2) {
+            sum = v.items[0] * v.items[1];
+            sumPart2 += sum;
+        }
+
+        // std.debug.print("d: k {any} sum {any}\n", .{ k, sum });
+    }
+
+    std.debug.print("part 1: {d}\n", .{sumPart1});
+    std.debug.print("part 2: {d}\n", .{sumPart2});
 }
 
 pub fn SchemaScanner(comptime T: type, buffer: []const T, size: usize) SchemaIterator(T) {
@@ -54,8 +91,8 @@ pub fn SchemaIterator(comptime T: type) type {
         };
 
         const SchemaSymbol = struct {
-            index: usize = 0,
             symbol: T,
+            index: usize = 0,
         };
 
         const WEST = [_]Direction{ Direction.nw, Direction.w, Direction.sw };
@@ -167,6 +204,7 @@ pub fn SchemaIterator(comptime T: type) type {
                             }
 
                             sn.?.valid = ss;
+
                             return sn;
                         }
 
