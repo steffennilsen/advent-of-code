@@ -4,9 +4,29 @@ const data = @embedFile("./4");
 const test_data = @embedFile("./4.test");
 
 pub fn main() !void {
-    var lines = std.mem.tokenize(u8, test_data, "\n");
-    _ = lines;
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    const games = try getGames(u8, &allocator, data);
+    defer games.deinit();
+    var sum_points: usize = 0;
+
+    for (games.items) |g| {
+        // std.debug.print("{d}> {any} | {any} | {any} | {d} \n", .{ g.id, g.winning.items, g.playing.items, g.played_winning.items, g.points });
+        sum_points += g.points;
+    }
+
+    std.debug.print("part 1: {d}\n", .{sum_points});
 }
+
+const Game = struct {
+    id: usize,
+    playing: std.ArrayList(usize),
+    winning: std.ArrayList(usize),
+    played_winning: std.ArrayList(usize),
+    points: usize,
+};
 
 pub fn ParseGamesIterator(comptime T: type) type {
     return struct {
@@ -15,12 +35,6 @@ pub fn ParseGamesIterator(comptime T: type) type {
         line_it: std.mem.TokenIterator(T, .any),
 
         const Self = @This();
-
-        pub const Game = struct {
-            id: usize,
-            playing: std.ArrayList(usize),
-            winning: std.ArrayList(usize),
-        };
 
         pub fn next(self: *Self) !?Game {
             const result = try self.peek() orelse return null;
@@ -45,6 +59,7 @@ pub fn ParseGamesIterator(comptime T: type) type {
             var playing_it = std.mem.splitSequence(T, playing_slice, " ");
             var winning = std.ArrayList(usize).init(self.allocator.*);
             var playing = std.ArrayList(usize).init(self.allocator.*);
+            var played_winning = std.ArrayList(usize).init(self.allocator.*);
 
             while (winning_it.next()) |n| {
                 var trimmed = std.mem.trim(T, n, " ");
@@ -64,12 +79,25 @@ pub fn ParseGamesIterator(comptime T: type) type {
 
                 const parsed = try std.fmt.parseUnsigned(usize, trimmed, 10);
                 try playing.append(parsed);
+
+                for (winning.items) |w| {
+                    if (parsed == w) {
+                        try played_winning.append(parsed);
+                    }
+                }
             }
+
+            const points = switch (played_winning.items.len) {
+                0 => 0,
+                else => std.math.pow(usize, 2, played_winning.items.len - 1),
+            };
 
             return Game{
                 .id = id,
                 .winning = winning,
                 .playing = playing,
+                .played_winning = played_winning,
+                .points = points,
             };
         }
 
@@ -80,21 +108,30 @@ pub fn ParseGamesIterator(comptime T: type) type {
     };
 }
 
-pub fn getGames(buffer: []const u8) void {
-    _ = buffer;
-    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    var allocator = arena.allocator();
+pub fn getGames(comptime T: type, allocator: *std.mem.Allocator, buffer: []const u8) !std.ArrayListAligned(Game, null) {
+    var games = std.ArrayList(Game).init(allocator.*);
 
-    var line_it = std.mem.tokenize(u8, test_data, "\n");
-    var it = ParseGamesIterator(u8){ .buffer = test_data, .line_it = line_it, .allocator = &allocator };
+    var line_it = std.mem.tokenize(T, buffer, "\n");
+    var it = ParseGamesIterator(T){ .buffer = test_data, .line_it = line_it, .allocator = allocator };
 
     while (try it.next()) |g| {
-        std.debug.print("{any}\n", .{g});
+        try games.append(g);
     }
+
+    return games;
 }
 
 test "p1" {
-    const games = getGames(test_data);
-    _ = games;
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    const games = try getGames(u8, &allocator, test_data);
+    defer games.deinit();
+
+    std.debug.print("\n", .{});
+
+    for (games.items) |g| {
+        std.debug.print("{d}> {any} | {any} | {any} | {d} \n", .{ g.id, g.winning.items, g.playing.items, g.played_winning.items, g.points });
+    }
 }
