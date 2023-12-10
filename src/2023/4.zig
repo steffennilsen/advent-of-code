@@ -10,8 +10,6 @@ pub fn main() !void {
 
 const Game = struct {
     id: usize,
-    start: usize,
-    end: usize,
     playing: [25]usize,
     winning: [10]usize,
 };
@@ -19,34 +17,18 @@ const Game = struct {
 pub fn GameIterator(comptime T: type) type {
     return struct {
         buffer: []const T,
-        index: usize = 0,
-        game: usize = 0,
+        line_it: std.mem.TokenIterator(T, .any),
 
         const Self = @This();
 
         pub fn next(self: *Self) !?Game {
             const result = try self.peek() orelse return null;
-            std.debug.print("buffer.len: {d}\n", .{self.buffer.len});
-            // std.debug.print("self.index: {} {d}, result.end: {} {d}\n", .{ @TypeOf(self.index), self.index, @TypeOf(result.end), result.end });
-            self.index = result.end;
-            self.game += 1;
-            std.debug.print("index: {d} char: {d}[{c}]\n", .{ self.index, self.buffer[self.index], self.buffer[self.index] });
+            _ = self.line_it.next();
             return result;
         }
 
         pub fn peek(self: *Self) !?Game {
-            const start = self.index;
-            // const end = std.mem.indexOf(T, self.buffer[start..self.buffer.len], "\n") orelse self.buffer.len - 1;
-            const end = (self.game + 1) * 48; // 116 49
-
-            if (end > self.buffer.len) {
-                return null;
-            }
-
-            std.debug.print("start: {d}[{c}], end: {d}[{c}]\n", .{ start, self.buffer[start], end, self.buffer[end] });
-            const line = self.buffer[start..end];
-
-            std.debug.print("line: [{s}]\n", .{line});
+            const line = self.line_it.peek() orelse return null;
 
             const id_index_end = std.mem.indexOf(T, line, ":").?;
             const rest_id_slice = line[0..id_index_end];
@@ -54,13 +36,9 @@ pub fn GameIterator(comptime T: type) type {
             const id_slice = line[id_index_start..id_index_end];
             const id = try std.fmt.parseUnsigned(T, id_slice, 10);
 
-            // std.debug.print("id = {d}\n", .{id});
-
             const pipe_index = std.mem.indexOf(T, line, "|").?;
             const winning_slice = std.mem.trim(T, line[(id_index_end + 1)..pipe_index], " ");
             const playing_slice = std.mem.trim(T, line[(pipe_index + 1)..line.len], " ");
-
-            // std.debug.print("id = {d} [{s} | {s}]\n", .{ id, winning_slice, playing_slice });
 
             var i: usize = 0;
             var winning_it = std.mem.splitSequence(T, winning_slice, " ");
@@ -89,26 +67,25 @@ pub fn GameIterator(comptime T: type) type {
                 i += 1;
             }
 
-            // std.debug.print("id = {d} [{any} | {any}]\n", .{ id, winning, playing });
-
             return Game{
                 .id = id,
                 .winning = winning,
                 .playing = playing,
-                .start = start,
-                .end = end,
             };
         }
 
         pub fn reset(self: *Self) void {
             self.index = 0;
+            self.line_it.reset();
         }
     };
 }
 
 test "p1" {
-    var it = GameIterator(u8){ .buffer = test_data };
+    var line_it = std.mem.tokenize(u8, test_data, "\n");
+    var it = GameIterator(u8){ .buffer = test_data, .line_it = line_it };
 
+    std.debug.print("\n", .{});
     while (try it.next()) |g| {
         std.debug.print("{}\n", .{g});
     }
