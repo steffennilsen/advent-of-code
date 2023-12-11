@@ -129,9 +129,61 @@ test "p1" {
     const games = try getGames(u8, &allocator, test_data);
     defer games.deinit();
 
-    std.debug.print("\n", .{});
-
     for (games.items) |g| {
-        std.debug.print("{d}> {any} | {any} | {any} | {d} \n", .{ g.id, g.winning.items, g.playing.items, g.played_winning.items, g.points });
+        switch (g.id) {
+            1 => {
+                const expected_winning = [_]usize{ 48, 83, 17, 86 };
+                try std.testing.expectEqual(expected_winning.len, g.played_winning.items.len);
+                for (expected_winning) |e| {
+                    const contains: bool = for (g.played_winning.items) |i| {
+                        if (i == e) break true;
+                    } else false;
+                    try std.testing.expect(contains);
+                }
+                try std.testing.expectEqual(@as(usize, 8), g.points);
+            },
+            2 => {
+                const expected_winning = [_]usize{ 32, 61 };
+                try std.testing.expectEqual(expected_winning.len, g.played_winning.items.len);
+                for (expected_winning) |e| {
+                    const contains: bool = for (g.played_winning.items) |i| {
+                        if (i == e) break true;
+                    } else false;
+                    try std.testing.expect(contains);
+                }
+                try std.testing.expectEqual(@as(usize, 2), g.points);
+            },
+            3 => {
+                const expected_winning = [_]usize{ 1, 21 };
+                try std.testing.expectEqual(expected_winning.len, g.played_winning.items.len);
+                for (expected_winning) |e| {
+                    const contains: bool = for (g.played_winning.items) |i| {
+                        if (i == e) break true;
+                    } else false;
+                    try std.testing.expect(contains);
+                }
+                try std.testing.expectEqual(@as(usize, 2), g.points);
+            },
+            4 => {
+                const expected_winning = [_]usize{84};
+                try std.testing.expectEqual(expected_winning.len, g.played_winning.items.len);
+                for (expected_winning) |e| {
+                    const contains: bool = for (g.played_winning.items) |i| {
+                        if (i == e) break true;
+                    } else false;
+                    try std.testing.expect(contains);
+                }
+                try std.testing.expectEqual(@as(usize, 1), g.points);
+            },
+            5 => {
+                try std.testing.expectEqual(@as(usize, 0), @as(usize, g.played_winning.items.len));
+                try std.testing.expectEqual(@as(usize, 0), g.points);
+            },
+            6 => {
+                try std.testing.expectEqual(@as(usize, 0), @as(usize, g.played_winning.items.len));
+                try std.testing.expectEqual(@as(usize, 0), g.points);
+            },
+            else => unreachable,
+        }
     }
 }
