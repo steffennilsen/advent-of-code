@@ -7,11 +7,13 @@ pub fn main() !void {}
 pub fn Almanac(comptime T: type) type {
     return struct {
         allocator: std.mem.Allocator,
-        buffer: []const T,
-        line_it: std.mem.TokenIterator(T, .any),
         map: std.AutoHashMap(Maps, std.ArrayList(usize)),
 
         const Self = @This();
+
+        const AlmanacErrors = error{
+            ParseError,
+        };
 
         const Maps = enum {
             seeds,
@@ -24,8 +26,7 @@ pub fn Almanac(comptime T: type) type {
             humidity_to_location,
         };
 
-        pub fn init(allocator: std.mem.Allocator, buffer: []const T) !Self {
-            var line_it = std.mem.tokenize(T, buffer, "\n");
+        pub fn init(allocator: std.mem.Allocator) !Self {
             var map = std.AutoHashMap(Maps, std.ArrayList(usize)).init(allocator);
 
             for (std.enums.values(Maps)) |m| {
@@ -34,8 +35,6 @@ pub fn Almanac(comptime T: type) type {
 
             return Self{
                 .allocator = allocator,
-                .buffer = buffer,
-                .line_it = line_it,
                 .map = map,
             };
         }
@@ -48,6 +47,35 @@ pub fn Almanac(comptime T: type) type {
 
             self.map.deinit();
         }
+
+        fn parseNumbers(slice: []const T, list: std.ArrayList(usize)) !type {
+            var it = std.mem.tokenize(T, std.mem.trim(T, slice, " "), " ");
+            while (it.next()) |s| {
+                const t = std.mem.trim(T, s, " ");
+                if (t.len == 0) {
+                    continue;
+                }
+
+                const n = try std.fmt.parseUnsigned(T, t, 10);
+                try list.append(n);
+            }
+        }
+
+        pub fn parseInput(buffer: []const T) !void {
+            var it = std.mem.tokenize(T, buffer, "\n");
+
+            // seeds is a special case as the numbers are on the same line
+            var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
+            var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
+            var seeds_slice = seeds_line[seeds_colon_index..seeds_line.len];
+            var seeds = parseNumbers(seeds_slice);
+            _ = seeds;
+
+            while (it.next()) |l| {
+                var line = std.mem.trim(T, l, " ");
+                _ = line;
+            }
+        }
     };
 }
 
@@ -56,6 +84,12 @@ test "p1" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac = try Almanac(u8).init(allocator, test_data);
+    var almanac = try Almanac(u8).init(allocator);
     defer almanac.denit();
+
+    const Maps = Almanac(u8).Maps;
+    const seeds_list: std.ArrayList(usize) = almanac.map.get(Maps.seeds).?;
+    const len: usize = @as(usize, seeds_list.items.len);
+
+    try std.testing.expectEqual(4, len);
 }
