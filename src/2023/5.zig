@@ -75,7 +75,7 @@ pub fn Almanac(comptime T: type) type {
             var seeds_list: std.ArrayList(usize) = self.map.get(Maps.seeds).?;
             try self.parseNumbers(
                 seeds_slice,
-                seeds_list,
+                @constCast(seeds_list),
             );
 
             std.debug.print("pi> {}\n", .{Maps.seeds});
