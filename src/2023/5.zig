@@ -48,7 +48,7 @@ pub fn Almanac(comptime T: type) type {
             self.map.deinit();
         }
 
-        fn parseNumbers(self: *Self, slice: []const T, list: std.ArrayList(usize)) !void {
+        fn parseNumbers(self: *Self, slice: []const T, list: *std.ArrayList(usize)) !void {
             _ = self;
             var it = std.mem.tokenize(T, std.mem.trim(T, slice, " "), " ");
             while (it.next()) |s| {
@@ -59,10 +59,10 @@ pub fn Almanac(comptime T: type) type {
 
                 std.debug.print("[{s}]\n", .{s});
                 const n = try std.fmt.parseUnsigned(T, t, 10);
-                try list.append(n);
+                try list.*.append(n);
             }
 
-            std.debug.print("pn> {any}\n", .{list.items});
+            std.debug.print("pn> {any}\n", .{list.*.items});
         }
 
         pub fn parseInput(self: *Self, buffer: []const T) !void {
@@ -72,19 +72,20 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_list = self.map.get(Maps.seeds).?;
-            var seeds = try self.parseNumbers(
+            var seeds_list: *std.ArrayList(usize) = @constCast(&self.map.get(Maps.seeds).?);
+            try self.parseNumbers(
                 seeds_slice,
                 seeds_list,
             );
-            _ = seeds;
-            std.debug.print("pi> {}\n", .{Maps.seeds});
-            std.debug.print("pi> {any}\n", .{seeds_list.items});
 
-            while (it.next()) |l| {
-                var line = std.mem.trim(T, l, " ");
-                _ = line;
-            }
+            std.debug.print("pi> {}\n", .{Maps.seeds});
+            std.debug.print("pi> {any}\n", .{seeds_list.*.items});
+            std.debug.print("pi> {any}\n", .{self.map.get(Maps.seeds).?.items});
+
+            // while (it.next()) |l| {
+            //     var line = std.mem.trim(T, l, " ");
+            //     _ = line;
+            // }
         }
     };
 }
