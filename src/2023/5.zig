@@ -72,15 +72,15 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_list: std.ArrayList(usize) = self.map.get(Maps.seeds).?;
+            var seeds_list: *const std.ArrayList(usize) = &self.map.get(Maps.seeds).?;
             try self.parseNumbers(
                 seeds_slice,
                 @constCast(seeds_list),
             );
 
-            std.debug.print("pi> {}\n", .{Maps.seeds});
-            std.debug.print("pi> {any}\n", .{seeds_list.*.items});
-            std.debug.print("pi> {any}\n", .{self.map.get(Maps.seeds).?.items});
+            std.debug.print("pi_1> {}\n", .{Maps.seeds});
+            std.debug.print("pi_2> {any}\n", .{seeds_list.*.items});
+            std.debug.print("pi_3> {any}\n", .{self.map.get(Maps.seeds).?.items});
 
             // while (it.next()) |l| {
             //     var line = std.mem.trim(T, l, " ");
@@ -99,10 +99,10 @@ test "p1" {
     defer almanac.denit();
     try almanac.parseInput(test_data);
 
-    const seeds_list: std.ArrayList(usize) = almanac.map.get(Maps.seeds).?;
+    var seeds_list: *std.ArrayList(usize) = @constCast(&almanac.map.get(Maps.seeds).?);
 
     // std.debug.print("{any}\n", .{almanac.map});
-    std.debug.print("p1> {any}\n", .{seeds_list.items});
+    std.debug.print("p1> {any}\n", .{seeds_list.*.items});
 
     var it = almanac.map.iterator();
     while (it.next()) |list| {
