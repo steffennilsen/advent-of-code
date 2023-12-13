@@ -72,7 +72,7 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_list: *std.ArrayList(usize) = @constCast(&self.map.get(Maps.seeds).?);
+            var seeds_list: std.ArrayList(usize) = self.map.get(Maps.seeds).?;
             try self.parseNumbers(
                 seeds_slice,
                 seeds_list,
