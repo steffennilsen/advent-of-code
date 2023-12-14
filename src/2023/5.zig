@@ -28,8 +28,8 @@ pub fn Almanac(comptime T: type) type {
             var map = std.AutoHashMap(Maps, std.ArrayList(usize)).init(allocator);
 
             for (std.enums.values(Maps)) |m| {
-                std.debug.print("init: {}\n", .{m});
-                try map.put(m, std.ArrayList(usize).init(allocator));
+                var list = std.ArrayList(usize).init(allocator);
+                try map.put(m, list);
             }
 
             return Self{
@@ -39,10 +39,9 @@ pub fn Almanac(comptime T: type) type {
         }
 
         pub fn denit(self: *Self) void {
-            std.debug.print("deinit\n", .{});
             var it = self.map.iterator();
             while (it.next()) |m| {
-                m.value_ptr.deinit();
+                m.value_ptr.*.deinit();
             }
 
             self.map.deinit();
@@ -57,12 +56,9 @@ pub fn Almanac(comptime T: type) type {
                     continue;
                 }
 
-                std.debug.print("[{s}]\n", .{s});
                 const n = try std.fmt.parseUnsigned(T, t, 10);
-                try list.*.append(n);
+                try list.append(n);
             }
-
-            std.debug.print("pn> {any}\n", .{list.*.items});
         }
 
         pub fn parseInput(self: *Self, buffer: []const T) !void {
@@ -72,15 +68,12 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_list: *const std.ArrayList(usize) = &self.map.get(Maps.seeds).?;
+            var seeds_list: *std.ArrayList(usize) = self.map.getPtr(Maps.seeds).?;
+
             try self.parseNumbers(
                 seeds_slice,
-                @constCast(seeds_list),
+                seeds_list,
             );
-
-            std.debug.print("pi_1> {}\n", .{Maps.seeds});
-            std.debug.print("pi_2> {any}\n", .{seeds_list.*.items});
-            std.debug.print("pi_3> {any}\n", .{self.map.get(Maps.seeds).?.items});
 
             // while (it.next()) |l| {
             //     var line = std.mem.trim(T, l, " ");
@@ -99,20 +92,11 @@ test "p1" {
     defer almanac.denit();
     try almanac.parseInput(test_data);
 
-    var seeds_list: *std.ArrayList(usize) = @constCast(&almanac.map.get(Maps.seeds).?);
+    var seeds_list: *std.ArrayList(usize) = almanac.map.getPtr(Maps.seeds).?;
 
-    // std.debug.print("{any}\n", .{almanac.map});
-    std.debug.print("p1> {any}\n", .{seeds_list.*.items});
-
-    var it = almanac.map.iterator();
-    while (it.next()) |list| {
-        // std.debug.print("[{any}]\n", .{list});
-
-        for (list.value_ptr.items) |v| {
-            std.debug.print("[{d}]\n", .{v});
-        }
-    }
-
-    try std.testing.expectEqual(@as(usize, 79), seeds_list.items[0]);
     try std.testing.expectEqual(@as(usize, 4), seeds_list.items.len);
+    try std.testing.expectEqual(@as(usize, 79), seeds_list.items[0]);
+    try std.testing.expectEqual(@as(usize, 14), seeds_list.items[1]);
+    try std.testing.expectEqual(@as(usize, 55), seeds_list.items[2]);
+    try std.testing.expectEqual(@as(usize, 13), seeds_list.items[3]);
 }
