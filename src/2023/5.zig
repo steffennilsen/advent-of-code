@@ -72,7 +72,7 @@ pub fn Almanac(comptime T: type) type {
             while (it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
                 const n = try std.fmt.parseUnsigned(usize, t, 10);
-                try list.append(n);
+                try list.*.append(n);
             }
         }
 
