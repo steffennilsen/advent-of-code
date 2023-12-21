@@ -43,8 +43,8 @@ pub fn Almanac(comptime T: type) type {
         };
 
         const ListInner = std.ArrayList(usize);
-        const ListOuter = std.ArrayList(ListInner);
-        const AlmanacMap = std.AutoHashMap(AlmanacKeys, ListOuter);
+        const ListOuter = std.ArrayList(*ListInner);
+        const AlmanacMap = std.AutoHashMap(AlmanacKeys, *ListOuter);
 
         pub fn init(allocator: std.mem.Allocator) !Self {
             var maps: AlmanacMap = std.AutoHashMap(AlmanacKeys, ListOuter).init(allocator);
