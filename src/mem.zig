@@ -2,7 +2,7 @@ const std = @import("std");
 
 const T = usize;
 const InnerList = std.ArrayList(usize);
-const OuterList = std.ArrayList(InnerList);
+const OuterList = std.ArrayList(*InnerList);
 
 fn list(allocator: std.mem.Allocator, outerList: *OuterList) !void {
     std.debug.print("\n", .{});
