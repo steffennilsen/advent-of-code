@@ -4,8 +4,6 @@ const test_data = @embedFile("./5.test");
 
 pub fn main() !void {}
 
-const AlmanacErrors = error{ ParseError, InternalError };
-
 pub fn Almanac(comptime T: type) type {
     return struct {
         allocator: std.mem.Allocator,
@@ -42,15 +40,16 @@ pub fn Almanac(comptime T: type) type {
             }
         };
 
+        const AlmanacErrors = error{ ParseError, InternalError };
         const ListInner = std.ArrayList(usize);
         const ListOuter = std.ArrayList(*ListInner);
-        const AlmanacMap = std.AutoHashMap(AlmanacKeys, *ListOuter);
+        const AlmanacMap = std.AutoHashMap(AlmanacKeys, ListOuter);
 
         pub fn init(allocator: std.mem.Allocator) !Self {
-            var maps: AlmanacMap = std.AutoHashMap(AlmanacKeys, ListOuter).init(allocator);
+            var maps = AlmanacMap.init(allocator);
 
             for (std.enums.values(AlmanacKeys)) |m| {
-                var list = std.ArrayList(ListInner).init(allocator);
+                var list = ListOuter.init(allocator);
                 try maps.put(m, list);
             }
 
@@ -62,10 +61,11 @@ pub fn Almanac(comptime T: type) type {
 
         pub fn denit(self: *Self) void {
             var maps_it = self.maps.valueIterator();
-            while (maps_it.next()) |map| {
-                _ = map;
-                // map
-            }
+            _ = maps_it;
+            // while (maps_it.next()) |lo_ptr| {
+            //     for (lo_ptr.*.items) |li_ptr| li_ptr.*.deinit();
+            //     lo_ptr.*.deinit();
+            // }
 
             self.maps.deinit();
         }
@@ -89,19 +89,19 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_ptr: ListOuter = self.maps.get(AlmanacKeys.seeds) orelse return AlmanacErrors.InternalError;
-            var seeds_list: ListInner = std.ArrayList(usize).init(self.allocator);
-            try seeds_ptr.append(seeds_list);
+            var seeds_lo: ListOuter = self.maps.get(AlmanacKeys.seeds) orelse return AlmanacErrors.InternalError;
+            var seeds_li = ListInner.init(self.allocator);
+            try seeds_lo.append(&seeds_li);
 
             std.debug.print("!!<{s}>\n", .{seeds_line});
 
             try self.parseNumbers(
                 seeds_slice,
-                &seeds_list,
+                &seeds_li,
             );
 
-            std.debug.print("##{any}\n", .{self.maps.get(AlmanacKeys.seeds).?.items});
-            std.debug.print("@@{any}\n", .{seeds_list.items});
+            std.debug.print("##{any}\n", .{self.maps.get(AlmanacKeys.seeds).?.items[0].*.items});
+            std.debug.print("@@{any}\n", .{seeds_li.items});
 
             key = null;
             while (it.next()) |line| {
@@ -115,15 +115,15 @@ pub fn Almanac(comptime T: type) type {
                     // std.debug.print("{any}<{s}>.len={d}; #SETKEY\n", .{ key, key_slice, key_slice.len });
                     key = AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
                 } else {
-                    var list: ListOuter = self.maps.get(key.?) orelse return AlmanacErrors.InternalError;
-                    var numbers_list: ListInner = std.ArrayList(usize).init(self.allocator);
-                    try list.append(numbers_list);
+                    var lo_ptr: ListOuter = self.maps.get(key.?) orelse return AlmanacErrors.InternalError;
+                    var li: ListInner = std.ArrayList(usize).init(self.allocator);
+                    try lo_ptr.append(&li);
 
                     var n_it = std.mem.split(T, line, " ");
                     while (n_it.next()) |s| {
                         const n = try std.fmt.parseUnsigned(T, s, 10);
                         // std.debug.print("{s}, {c}, {d}\n", .{ s, s, n });
-                        try numbers_list.append(n);
+                        try li.append(n);
                     }
 
                     // std.debug.print("l1> {any}\n", .{list_ptr.items});
@@ -159,45 +159,47 @@ test "p1_mappings" {
     const Maps = TypedAlmanac.AlmanacKeys;
     const ListInner = TypedAlmanac.ListInner;
     const ListOuter = TypedAlmanac.ListOuter;
+    std.debug.print("\n", .{});
 
-    var arena: std.mem.Allocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
     var almanac: TypedAlmanac = try Almanac(T).init(allocator);
-    defer almanac.denit();
+    // defer almanac.denit();
     try almanac.parseInput(test_data);
 
     // checking first
-    const seeds_to_soil_list: ListOuter = almanac.maps.get(Maps.seeds_to_soil).?;
-    std.debug.print("p1_mappings.seeds_to_soil_list>{any}\n", .{seeds_to_soil_list.items});
-    const seeds_to_soil: ListInner = seeds_to_soil_list.items[0];
-    std.debug.print("p1_mappings>{any}\n", .{seeds_to_soil.items});
-    try std.testing.expectEqual(@as(usize, 2), seeds_to_soil.items.len);
+    const seeds_to_soil_lo_ptr: ListOuter = almanac.maps.get(Maps.seeds_to_soil).?;
+    try std.testing.expectEqual(@as(usize, 1), seeds_to_soil_lo_ptr.items.len);
+    std.debug.print("p1_mappings.seeds_to_soil_list>{any}\n", .{seeds_to_soil_lo_ptr.items});
+    const seeds_to_soil_li_ptr: *ListInner = seeds_to_soil_lo_ptr.items[0];
+    std.debug.print("p1_mappings>{any}\n", .{seeds_to_soil_li_ptr.items});
+    try std.testing.expectEqual(@as(usize, 2), seeds_to_soil_li_ptr.items.len);
 
-    const seeds_to_soil_slice_1 = seeds_to_soil_list.items[0];
+    const seeds_to_soil_slice_1 = seeds_to_soil_lo_ptr.items[0];
     try std.testing.expectEqual(@as(usize, 3), seeds_to_soil_slice_1.items.len);
     try std.testing.expectEqual(@as(usize, 50), seeds_to_soil_slice_1.items[0]);
     try std.testing.expectEqual(@as(usize, 98), seeds_to_soil_slice_1.items[1]);
     try std.testing.expectEqual(@as(usize, 2), seeds_to_soil_slice_1.items[2]);
 
-    const seeds_to_soil_slice_2 = &seeds_to_soil_list.items[0];
+    const seeds_to_soil_slice_2 = seeds_to_soil_lo_ptr.items[0];
     try std.testing.expectEqual(@as(usize, 3), seeds_to_soil_slice_2.items.len);
     try std.testing.expectEqual(@as(usize, 52), seeds_to_soil_slice_2.items[0]);
     try std.testing.expectEqual(@as(usize, 50), seeds_to_soil_slice_2.items[1]);
     try std.testing.expectEqual(@as(usize, 48), seeds_to_soil_slice_2.items[2]);
 
     // checking last
-    const humidity_to_location_list: ListOuter = almanac.maps.get(Maps.humidity_to_location).?;
-    try std.testing.expectEqual(@as(usize, 2), humidity_to_location_list.items.len);
+    const humidity_to_location_lo_ptr: ListOuter = almanac.maps.get(Maps.humidity_to_location).?;
+    try std.testing.expectEqual(@as(usize, 2), humidity_to_location_lo_ptr.items.len);
 
-    const humidity_to_location_slice_1 = humidity_to_location_list.items[0];
+    const humidity_to_location_slice_1 = humidity_to_location_lo_ptr.items[0];
     try std.testing.expectEqual(@as(usize, 3), humidity_to_location_slice_1.items.len);
     try std.testing.expectEqual(@as(usize, 60), humidity_to_location_slice_1.items[0]);
     try std.testing.expectEqual(@as(usize, 56), humidity_to_location_slice_1.items[1]);
     try std.testing.expectEqual(@as(usize, 37), humidity_to_location_slice_1.items[2]);
 
-    const humidity_to_location_slice_2 = humidity_to_location_list.items[0];
+    const humidity_to_location_slice_2 = humidity_to_location_lo_ptr.items[0];
     try std.testing.expectEqual(@as(usize, 3), humidity_to_location_slice_2.items.len);
     try std.testing.expectEqual(@as(usize, 56), humidity_to_location_slice_2.items[0]);
     try std.testing.expectEqual(@as(usize, 93), humidity_to_location_slice_2.items[1]);
