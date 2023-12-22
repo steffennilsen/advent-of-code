@@ -56,10 +56,10 @@ const Map2 = std.AutoHashMap(usize, List2);
 
 fn externalMapPut(allocator: std.mem.Allocator, map: *Map2) !void {
     var list = List2.init(allocator);
-    try map.put(11, list);
     try list.append(22);
-    var list2: *List2 = map.getPtr(11).?;
-    try list2.append(33);
+    try map.put(11, list);
+    // var list2: *List2 = map.getPtr(11).?;
+    // try list2.append(33);
 }
 
 test "external map put" {
@@ -74,5 +74,6 @@ test "external map put" {
     const list: List2 = map.get(11).?;
     try std.testing.expectEqual(List2, @TypeOf(list));
     try std.testing.expectEqual(@as(usize, 1), list.items.len);
-    try std.testing.expectEqual(@as(usize, 33), list.items[0]);
+    try std.testing.expectEqual(@as(usize, 22), list.items[0]);
+    // try std.testing.expectEqual(@as(usize, 33), list.items[0]);
 }
