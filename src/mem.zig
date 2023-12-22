@@ -1,12 +1,13 @@
 const std = @import("std");
 
 const InnerList = std.ArrayList(usize);
-const OuterList = std.ArrayList(InnerList);
+const OuterList = std.ArrayList(*InnerList);
 
 fn external_fn(allocator: std.mem.Allocator, ol: *OuterList) !void {
     var li_1_1 = InnerList.init(allocator);
-    try ol.append(li_1_1);
+    try ol.append(&li_1_1);
     try li_1_1.append(11);
+    try li_1_1.append(12);
 }
 
 test "list of lists" {
@@ -18,7 +19,8 @@ test "list of lists" {
     try external_fn(allocator, &ol);
     try std.testing.expectEqual(@as(usize, 1), ol.items.len);
 
-    const il: InnerList = ol.items[0];
-    try std.testing.expectEqual(@as(usize, 1), il.items.len);
+    const il: *InnerList = ol.items[0];
+    try std.testing.expectEqual(@as(usize, 2), il.items.len);
     try std.testing.expectEqual(@as(usize, 11), il.items[0]);
+    try std.testing.expectEqual(@as(usize, 12), il.items[1]);
 }
