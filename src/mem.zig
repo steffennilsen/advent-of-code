@@ -4,7 +4,7 @@ const InnerList = std.ArrayList(usize);
 const OuterList = std.ArrayList(InnerList);
 const Map = std.AutoHashMap(usize, OuterList);
 
-fn mapper(allocator: std.mem.Allocator, map: *Map) !void {
+fn external_fn(allocator: std.mem.Allocator, map: *Map) !void {
     var ol_1 = OuterList.init(allocator);
     try map.put(1, ol_1);
 
@@ -20,7 +20,7 @@ test "map" {
 
     var map = Map.init(allocator);
     defer map.deinit();
-    try mapper(allocator, &map);
+    try external_fn(allocator, &map);
 
     try std.testing.expectEqual(@as(usize, 1), map.count());
 
