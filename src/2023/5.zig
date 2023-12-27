@@ -100,16 +100,16 @@ pub fn Almanac(comptime T: type) type {
             _ = self;
             var colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
             const slice = line[0..colon_index];
-            var map_it = std.mem.split(T, slice, " ");
-            const key_slice = map_it.next() orelse return AlmanacErrors.ParseError;
+            var it = std.mem.split(T, slice, " ");
+            const key_slice = it.next() orelse return AlmanacErrors.ParseError;
             return AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
         }
 
         fn parseSeeds(self: *Self, line: []const T) !void {
             var seeds_colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
             var slice = line[(seeds_colon_index + 1)..line.len];
-            var seeds_it = std.mem.tokenizeAny(T, std.mem.trim(T, slice, " "), " ");
-            while (seeds_it.next()) |s| {
+            var it = std.mem.tokenizeAny(T, std.mem.trim(T, slice, " "), " ");
+            while (it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
                 const n = try std.fmt.parseUnsigned(usize, t, 10);
                 try self.seeds.append(n);
