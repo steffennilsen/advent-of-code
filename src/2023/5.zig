@@ -67,11 +67,9 @@ pub fn Almanac(comptime T: type) type {
 
         pub fn denit(self: *Self) void {
             var maps_it = self.maps.valueIterator();
-            _ = maps_it;
-            // while (maps_it.next()) |lo_ptr| {
-            //     for (lo_ptr.*.items) |li_ptr| li_ptr.*.deinit();
-            //     lo_ptr.*.deinit();
-            // }
+            while (maps_it.next()) |rl| {
+                rl.deinit();
+            }
 
             self.maps.deinit();
         }
