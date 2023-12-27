@@ -25,12 +25,7 @@ pub fn main() !void {
     var almanac_p2: TypedAlmanac = try Almanac(T).init(allocator, true);
     defer almanac_p2.denit();
     try almanac_p2.solve(data);
-
-    var lowest_p2: usize = std.math.maxInt(usize);
-    for (almanac_p2.seeds.items) |seed| {
-        const location: usize = seed.location;
-        if (location < lowest_p2) lowest_p1 = location;
-    }
+    const lowest_p2 = try almanac_p2.solveExpandSeedRanges();
 
     std.debug.print("part 1: {d}\n", .{lowest_p1});
     std.debug.print("part 2: {d}\n", .{lowest_p2});
@@ -41,7 +36,6 @@ pub fn Almanac(comptime T: type) type {
         allocator: std.mem.Allocator,
         maps: AlmanacMap,
         seeds: Seeds,
-        seed_range: bool,
 
         const Self = @This();
 
@@ -88,7 +82,7 @@ pub fn Almanac(comptime T: type) type {
         const AlmanacMap = std.AutoHashMap(AlmanacKeys, RangeList);
         const Seeds = std.ArrayList(Seed);
 
-        pub fn init(allocator: std.mem.Allocator, seed_range: bool) !Self {
+        pub fn init(allocator: std.mem.Allocator) !Self {
             var maps = AlmanacMap.init(allocator);
             var seeds = Seeds.init(allocator);
 
@@ -101,7 +95,6 @@ pub fn Almanac(comptime T: type) type {
                 .allocator = allocator,
                 .maps = maps,
                 .seeds = seeds,
-                .seed_range = seed_range,
             };
         }
 
@@ -147,29 +140,29 @@ pub fn Almanac(comptime T: type) type {
             var slice = line[(seeds_colon_index + 1)..line.len];
             var it = std.mem.tokenizeAny(T, std.mem.trim(T, slice, " "), " ");
 
-            if (self.seed_range) {
-                while (it.peek() != null) {
-                    const start_str = it.next() orelse return AlmanacErrors.ParseError;
-                    const start_trm = std.mem.trim(T, start_str, " ");
-                    const start = try std.fmt.parseUnsigned(usize, start_trm, 10);
+            // if (self.seed_range) {
+            //     while (it.peek() != null) {
+            //         const start_str = it.next() orelse return AlmanacErrors.ParseError;
+            //         const start_trm = std.mem.trim(T, start_str, " ");
+            //         const start = try std.fmt.parseUnsigned(usize, start_trm, 10);
 
-                    const len_str = it.next() orelse return AlmanacErrors.ParseError;
-                    const len_trm = std.mem.trim(T, len_str, " ");
-                    const len = try std.fmt.parseUnsigned(usize, len_trm, 10);
+            //         const len_str = it.next() orelse return AlmanacErrors.ParseError;
+            //         const len_trm = std.mem.trim(T, len_str, " ");
+            //         const len = try std.fmt.parseUnsigned(usize, len_trm, 10);
 
-                    for (start..(start + len)) |n| {
-                        const seed = Seed{ .id = n };
-                        try self.seeds.append(seed);
-                    }
-                }
-            } else {
-                while (it.next()) |s| {
-                    const t = std.mem.trim(T, s, " ");
-                    const n = try std.fmt.parseUnsigned(usize, t, 10);
-                    const seed = Seed{ .id = n };
-                    try self.seeds.append(seed);
-                }
+            //         for (start..(start + len)) |n| {
+            //             const seed = Seed{ .id = n };
+            //             try self.seeds.append(seed);
+            //         }
+            //     }
+            // } else {
+            while (it.next()) |s| {
+                const t = std.mem.trim(T, s, " ");
+                const n = try std.fmt.parseUnsigned(usize, t, 10);
+                const seed = Seed{ .id = n };
+                try self.seeds.append(seed);
             }
+            // }
         }
 
         fn parseInput(self: *Self, buffer: []const T) !void {
@@ -223,6 +216,30 @@ pub fn Almanac(comptime T: type) type {
             try self.parseInput(buffer);
             try self.mapSeeds();
         }
+
+        pub fn solveExpandSeedRanges(self: *Self) !usize {
+            var lowest: usize = std.math.maxInt(usize);
+            var i: usize = 0;
+            while (i < self.seeds.items.len) : (i += 2) {
+                const start = self.seeds.items[i].id;
+                const len = self.seeds.items[i + 1].id;
+                const end = start + len;
+
+                for (start..end) |seed| {
+                    const soil = try self.mapSeed(@intCast(seed), AlmanacKeys.soil);
+                    const fertilizer = try self.mapSeed(@intCast(soil), AlmanacKeys.fertilizer);
+                    const water = try self.mapSeed(@intCast(fertilizer), AlmanacKeys.water);
+                    const light = try self.mapSeed(@intCast(water), AlmanacKeys.light);
+                    const temperature = try self.mapSeed(@intCast(light), AlmanacKeys.temperature);
+                    const humidity = try self.mapSeed(@intCast(temperature), AlmanacKeys.humidity);
+                    const location = try self.mapSeed(@intCast(humidity), AlmanacKeys.location);
+
+                    if (location < lowest) lowest = location;
+                }
+            }
+
+            return lowest;
+        }
     };
 }
 
@@ -234,7 +251,7 @@ test "p1_seeds" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac = try TypedAlmanac.init(allocator, false);
+    var almanac = try TypedAlmanac.init(allocator);
     defer almanac.denit();
     try almanac.solve(test_data);
 
@@ -256,7 +273,7 @@ test "p1_mappings" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac: TypedAlmanac = try Almanac(T).init(allocator, false);
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
     try almanac.solve(test_data);
 
@@ -303,7 +320,7 @@ test "p1_seed_values" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac: TypedAlmanac = try Almanac(T).init(allocator, false);
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
     try almanac.solve(test_data);
 
@@ -342,7 +359,7 @@ test "p1_lowest" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac: TypedAlmanac = try Almanac(T).init(allocator, false);
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
     try almanac.solve(test_data);
 
@@ -365,15 +382,10 @@ test "p2_lowest" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var almanac: TypedAlmanac = try Almanac(T).init(allocator, true);
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
     try almanac.solve(test_data);
-
-    var lowest: usize = std.math.maxInt(usize);
-    for (almanac.seeds.items) |seed| {
-        const location: usize = seed.location;
-        if (location < lowest) lowest = location;
-    }
+    const lowest = try almanac.solveExpandSeedRanges();
 
     try std.testing.expectEqual(@as(usize, 46), lowest);
 }
