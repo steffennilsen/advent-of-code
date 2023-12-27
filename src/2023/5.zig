@@ -50,7 +50,8 @@ pub fn Almanac(comptime T: type) type {
             map: std.AutoHashMap(AlmanacKeys, usize),
 
             fn init(allocator: std.mem.Allocator, id: usize) !Seed {
-                const map = std.AutoHashMap(AlmanacKeys, usize).init(allocator);
+                var map = std.AutoHashMap(AlmanacKeys, usize).init(allocator);
+
                 return Seed{
                     .id = id,
                     .map = map,
@@ -187,7 +188,7 @@ test "p1_mappings" {
     const allocator = arena.allocator();
 
     var almanac: TypedAlmanac = try Almanac(T).init(allocator);
-    // defer almanac.denit();
+    defer almanac.denit();
     try almanac.parseInput(test_data);
 
     // checking first
@@ -217,4 +218,77 @@ test "p1_mappings" {
     try std.testing.expectEqual(@as(usize, 56), htl_range_2.dst_start);
     try std.testing.expectEqual(@as(usize, 93), htl_range_2.src_start);
     try std.testing.expectEqual(@as(usize, 4), htl_range_2.len);
+}
+
+test "p1_seed_values" {
+    const T = u8;
+    const TypedAlmanac = Almanac(T);
+    const Seed = TypedAlmanac.Seed;
+    _ = Seed;
+    const MapKeys = TypedAlmanac.AlmanacKeys;
+    const RangeList = TypedAlmanac.RangeList;
+    _ = RangeList;
+
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
+    defer almanac.denit();
+    try almanac.parseInput(test_data);
+
+    const seed_79 = for (almanac.seeds.items) |s| {
+        if (s.id == 79) break s;
+    } else unreachable;
+    std.debug.print("\n{any}\n", .{seed_79.id});
+    var it = seed_79.map.valueIterator();
+    while (it.next()) |v_ptr| std.debug.print("{any}\n", .{v_ptr.*});
+    try std.testing.expectEqual(@as(usize, 79), seed_79.id);
+    try std.testing.expectEqual(@as(usize, 7), seed_79.map.count());
+    try std.testing.expectEqual(@as(usize, 81), seed_79.map.get(MapKeys.soil).?);
+    try std.testing.expectEqual(@as(usize, 81), seed_79.map.get(MapKeys.fertilizer).?);
+    try std.testing.expectEqual(@as(usize, 81), seed_79.map.get(MapKeys.water).?);
+    try std.testing.expectEqual(@as(usize, 74), seed_79.map.get(MapKeys.light).?);
+    try std.testing.expectEqual(@as(usize, 78), seed_79.map.get(MapKeys.temperature).?);
+    try std.testing.expectEqual(@as(usize, 78), seed_79.map.get(MapKeys.humidity).?);
+    try std.testing.expectEqual(@as(usize, 82), seed_79.map.get(MapKeys.location).?);
+
+    const seed_14 = for (almanac.seeds.items) |s| {
+        if (s.id == 14) break s;
+    } else unreachable;
+    try std.testing.expectEqual(@as(usize, 14), seed_14.id);
+    try std.testing.expectEqual(@as(usize, 7), seed_14.map.count());
+    try std.testing.expectEqual(@as(usize, 14), seed_14.map.get(MapKeys.soil).?);
+    try std.testing.expectEqual(@as(usize, 53), seed_14.map.get(MapKeys.fertilizer).?);
+    try std.testing.expectEqual(@as(usize, 49), seed_14.map.get(MapKeys.water).?);
+    try std.testing.expectEqual(@as(usize, 42), seed_14.map.get(MapKeys.light).?);
+    try std.testing.expectEqual(@as(usize, 42), seed_14.map.get(MapKeys.temperature).?);
+    try std.testing.expectEqual(@as(usize, 43), seed_14.map.get(MapKeys.humidity).?);
+    try std.testing.expectEqual(@as(usize, 43), seed_14.map.get(MapKeys.location).?);
+
+    const seed_55 = for (almanac.seeds.items) |s| {
+        if (s.id == 55) break s;
+    } else unreachable;
+    try std.testing.expectEqual(@as(usize, 55), seed_55.id);
+    try std.testing.expectEqual(@as(usize, 7), seed_55.map.count());
+    try std.testing.expectEqual(@as(usize, 57), seed_55.map.get(MapKeys.soil).?);
+    try std.testing.expectEqual(@as(usize, 57), seed_55.map.get(MapKeys.fertilizer).?);
+    try std.testing.expectEqual(@as(usize, 53), seed_55.map.get(MapKeys.water).?);
+    try std.testing.expectEqual(@as(usize, 46), seed_55.map.get(MapKeys.light).?);
+    try std.testing.expectEqual(@as(usize, 82), seed_55.map.get(MapKeys.temperature).?);
+    try std.testing.expectEqual(@as(usize, 82), seed_55.map.get(MapKeys.humidity).?);
+    try std.testing.expectEqual(@as(usize, 86), seed_55.map.get(MapKeys.location).?);
+
+    const seed_13 = for (almanac.seeds.items) |s| {
+        if (s.id == 13) break s;
+    } else unreachable;
+    try std.testing.expectEqual(@as(usize, 13), seed_13.id);
+    try std.testing.expectEqual(@as(usize, 7), seed_13.map.count());
+    try std.testing.expectEqual(@as(usize, 13), seed_13.map.get(MapKeys.soil).?);
+    try std.testing.expectEqual(@as(usize, 52), seed_13.map.get(MapKeys.fertilizer).?);
+    try std.testing.expectEqual(@as(usize, 41), seed_13.map.get(MapKeys.water).?);
+    try std.testing.expectEqual(@as(usize, 34), seed_13.map.get(MapKeys.light).?);
+    try std.testing.expectEqual(@as(usize, 34), seed_13.map.get(MapKeys.temperature).?);
+    try std.testing.expectEqual(@as(usize, 35), seed_13.map.get(MapKeys.humidity).?);
+    try std.testing.expectEqual(@as(usize, 35), seed_13.map.get(MapKeys.location).?);
 }
