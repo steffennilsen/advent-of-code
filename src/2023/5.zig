@@ -136,7 +136,7 @@ pub fn Almanac(comptime T: type) type {
             }
         }
 
-        pub fn parseInput(self: *Self, buffer: []const T) !void {
+        fn parseInput(self: *Self, buffer: []const T) !void {
             var it = std.mem.tokenizeAny(T, buffer, "\n");
 
             // seeds is a special case as the numbers are on the same line
@@ -154,6 +154,40 @@ pub fn Almanac(comptime T: type) type {
                 }
             }
         }
+
+        fn getMapping(self: *Self, src: isize, key: AlmanacKeys) usize {
+            const ranges: RangeList = self.maps.get(key).?;
+            for (ranges.items) |range| {
+                // (55 - 98) + 2
+                // -43 + 2
+                // -41
+                //
+                // (55 - 50) + 48
+                // 5 + 48
+                // 52
+                const dst_start: isize = @intCast(range.dst_start);
+                const src_start: isize = @intCast(range.src_start);
+                const len: isize = @intCast(range.len);
+                if (src - src_start + len > 0) {
+                    const rangeDiff = dst_start - src_start;
+                    return @intCast(src + rangeDiff);
+                }
+            }
+
+            return @intCast(src);
+        }
+
+        fn mapSeeds(self: *Self) !void {
+            for (self.seeds.items, 0..self.seeds.items.len) |seed, i| {
+                try self.seeds.items[i].map.put(AlmanacKeys.soil, self.getMapping(@intCast(seed.id), AlmanacKeys.soil));
+                try self.seeds.items[i].map.put(AlmanacKeys.fertilizer, self.getMapping(@intCast(self.seeds.items[i].map.get(AlmanacKeys.soil).?), AlmanacKeys.fertilizer));
+            }
+        }
+
+        pub fn solve(self: *Self, buffer: []const T) !void {
+            try self.parseInput(buffer);
+            try self.mapSeeds();
+        }
     };
 }
 
@@ -167,7 +201,7 @@ test "p1_seeds" {
 
     var almanac = try TypedAlmanac.init(allocator);
     defer almanac.denit();
-    try almanac.parseInput(test_data);
+    try almanac.solve(test_data);
 
     const seeds_li = almanac.seeds;
     try std.testing.expectEqual(@as(usize, 4), seeds_li.items.len);
@@ -189,7 +223,7 @@ test "p1_mappings" {
 
     var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
-    try almanac.parseInput(test_data);
+    try almanac.solve(test_data);
 
     // checking first
     const sts_rl: RangeList = almanac.maps.get(MapKeys.soil).?;
@@ -235,7 +269,7 @@ test "p1_seed_values" {
 
     var almanac: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac.denit();
-    try almanac.parseInput(test_data);
+    try almanac.solve(test_data);
 
     const seed_79 = for (almanac.seeds.items) |s| {
         if (s.id == 79) break s;
