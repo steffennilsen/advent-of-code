@@ -6,6 +6,7 @@ pub fn main() !void {
     const T = u8;
     const TypedAlmanac = Almanac(T);
     const MapKeys = TypedAlmanac.AlmanacKeys;
+    _ = MapKeys;
 
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -17,7 +18,7 @@ pub fn main() !void {
 
     var lowest_p1: usize = std.math.maxInt(usize);
     for (almanac_p1.seeds.items) |seed| {
-        const location: usize = seed.map.get(MapKeys.location).?;
+        const location: usize = seed.mappings.location;
         if (location < lowest_p1) lowest_p1 = location;
     }
 
@@ -27,7 +28,7 @@ pub fn main() !void {
 
     var lowest_p2: usize = std.math.maxInt(usize);
     for (almanac_p2.seeds.items) |seed| {
-        const location: usize = seed.map.get(MapKeys.location).?;
+        const location: usize = seed.mappings.location;
         if (location < lowest_p2) lowest_p1 = location;
     }
 
