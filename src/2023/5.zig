@@ -8,30 +8,30 @@ pub fn Almanac(comptime T: type) type {
     return struct {
         allocator: std.mem.Allocator,
         maps: AlmanacMap,
-        seeds: std.ArrayList(usize),
+        seeds: Seeds,
 
         const Self = @This();
 
         pub const AlmanacKeys = enum {
-            seeds_to_soil,
-            soil_to_fertilizer,
-            fertilizer_to_water,
-            water_to_light,
-            light_to_temperature,
-            temperature_to_humidity,
-            humidity_to_location,
+            soil,
+            fertilizer,
+            water,
+            light,
+            temperature,
+            humidity,
+            location,
 
             pub fn keyToEnum(key: []const T) ?AlmanacKeys {
                 switch (key.len) {
-                    12 => if (std.mem.eql(T, key, "seed-to-soil")) return AlmanacKeys.seeds_to_soil,
-                    14 => if (std.mem.eql(T, key, "water-to-light")) return AlmanacKeys.water_to_light,
-                    18 => if (std.mem.eql(T, key, "soil-to-fertilizer")) return AlmanacKeys.soil_to_fertilizer,
-                    19 => if (std.mem.eql(T, key, "fertilizer-to-water")) return AlmanacKeys.fertilizer_to_water,
+                    12 => if (std.mem.eql(T, key, "seed-to-soil")) return AlmanacKeys.soil,
+                    14 => if (std.mem.eql(T, key, "water-to-light")) return AlmanacKeys.light,
+                    18 => if (std.mem.eql(T, key, "soil-to-fertilizer")) return AlmanacKeys.fertilizer,
+                    19 => if (std.mem.eql(T, key, "fertilizer-to-water")) return AlmanacKeys.water,
                     20 => {
-                        if (std.mem.eql(T, key, "humidity-to-location")) return AlmanacKeys.humidity_to_location;
-                        if (std.mem.eql(T, key, "light-to-temperature")) return AlmanacKeys.light_to_temperature;
+                        if (std.mem.eql(T, key, "humidity-to-location")) return AlmanacKeys.location;
+                        if (std.mem.eql(T, key, "light-to-temperature")) return AlmanacKeys.temperature;
                     },
-                    23 => if (std.mem.eql(T, key, "temperature-to-humidity")) return AlmanacKeys.temperature_to_humidity,
+                    23 => if (std.mem.eql(T, key, "temperature-to-humidity")) return AlmanacKeys.humidity,
                     else => return null,
                 }
 
@@ -45,13 +45,31 @@ pub fn Almanac(comptime T: type) type {
             len: usize,
         };
 
+        const Seed = struct {
+            id: usize,
+            map: std.AutoHashMap(AlmanacKeys, usize),
+
+            fn init(allocator: std.mem.Allocator, id: usize) !Seed {
+                const map = std.AutoHashMap(AlmanacKeys, usize).init(allocator);
+                return Seed{
+                    .id = id,
+                    .map = map,
+                };
+            }
+
+            fn deinit(self: *Seed) void {
+                self.map.deinit();
+            }
+        };
+
         const AlmanacErrors = error{ ParseError, InternalError };
         const RangeList = std.ArrayList(Range);
         const AlmanacMap = std.AutoHashMap(AlmanacKeys, RangeList);
+        const Seeds = std.ArrayList(Seed);
 
         pub fn init(allocator: std.mem.Allocator) !Self {
             var maps = AlmanacMap.init(allocator);
-            var seeds = std.ArrayList(usize).init(allocator);
+            var seeds = Seeds.init(allocator);
 
             for (std.enums.values(AlmanacKeys)) |m| {
                 var list = RangeList.init(allocator);
@@ -67,11 +85,11 @@ pub fn Almanac(comptime T: type) type {
 
         pub fn denit(self: *Self) void {
             var maps_it = self.maps.valueIterator();
-            while (maps_it.next()) |rl| {
-                rl.deinit();
-            }
-
+            while (maps_it.next()) |rl| rl.deinit();
             self.maps.deinit();
+
+            for (self.seeds.items) |seed| @constCast(&seed).deinit();
+            self.seeds.deinit();
         }
 
         fn parseRange(self: Self, slice: []const T) !Range {
@@ -112,7 +130,8 @@ pub fn Almanac(comptime T: type) type {
             while (it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
                 const n = try std.fmt.parseUnsigned(usize, t, 10);
-                try self.seeds.append(n);
+                const seed = try Seed.init(self.allocator, n);
+                try self.seeds.append(seed);
             }
         }
 
@@ -151,10 +170,10 @@ test "p1_seeds" {
 
     const seeds_li = almanac.seeds;
     try std.testing.expectEqual(@as(usize, 4), seeds_li.items.len);
-    try std.testing.expectEqual(@as(usize, 79), seeds_li.items[0]);
-    try std.testing.expectEqual(@as(usize, 14), seeds_li.items[1]);
-    try std.testing.expectEqual(@as(usize, 55), seeds_li.items[2]);
-    try std.testing.expectEqual(@as(usize, 13), seeds_li.items[3]);
+    try std.testing.expectEqual(@as(usize, 79), seeds_li.items[0].id);
+    try std.testing.expectEqual(@as(usize, 14), seeds_li.items[1].id);
+    try std.testing.expectEqual(@as(usize, 55), seeds_li.items[2].id);
+    try std.testing.expectEqual(@as(usize, 13), seeds_li.items[3].id);
 }
 
 test "p1_mappings" {
@@ -172,7 +191,7 @@ test "p1_mappings" {
     try almanac.parseInput(test_data);
 
     // checking first
-    const sts_rl: RangeList = almanac.maps.get(MapKeys.seeds_to_soil).?;
+    const sts_rl: RangeList = almanac.maps.get(MapKeys.soil).?;
     try std.testing.expectEqual(@as(usize, 2), sts_rl.items.len);
 
     const sts_range_1 = sts_rl.items[0];
@@ -186,7 +205,7 @@ test "p1_mappings" {
     try std.testing.expectEqual(@as(usize, 48), sts_range_2.len);
 
     // checking last
-    const htl_rl: RangeList = almanac.maps.get(MapKeys.humidity_to_location).?;
+    const htl_rl: RangeList = almanac.maps.get(MapKeys.location).?;
     try std.testing.expectEqual(@as(usize, 2), htl_rl.items.len);
 
     const htl_range_1 = htl_rl.items[0];
