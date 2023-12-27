@@ -18,7 +18,7 @@ pub fn main() !void {
 
     var lowest_p1: usize = std.math.maxInt(usize);
     for (almanac_p1.seeds.items) |seed| {
-        const location: usize = seed.mappings.location;
+        const location: usize = seed.location;
         if (location < lowest_p1) lowest_p1 = location;
     }
 
@@ -28,7 +28,7 @@ pub fn main() !void {
 
     var lowest_p2: usize = std.math.maxInt(usize);
     for (almanac_p2.seeds.items) |seed| {
-        const location: usize = seed.mappings.location;
+        const location: usize = seed.location;
         if (location < lowest_p2) lowest_p1 = location;
     }
 
@@ -80,7 +80,7 @@ pub fn Almanac(comptime T: type) type {
 
         const Seed = struct {
             id: usize,
-            location: usize,
+            location: usize = 0,
         };
 
         const AlmanacErrors = error{ ParseError, InternalError };
@@ -158,7 +158,7 @@ pub fn Almanac(comptime T: type) type {
                     const len = try std.fmt.parseUnsigned(usize, len_trm, 10);
 
                     for (start..(start + len)) |n| {
-                        const seed = Seed{ .id = n, .mappings = Mappings{} };
+                        const seed = Seed{ .id = n };
                         try self.seeds.append(seed);
                     }
                 }
@@ -166,7 +166,7 @@ pub fn Almanac(comptime T: type) type {
                 while (it.next()) |s| {
                     const t = std.mem.trim(T, s, " ");
                     const n = try std.fmt.parseUnsigned(usize, t, 10);
-                    const seed = Seed{ .id = n, .mappings = Mappings{} };
+                    const seed = Seed{ .id = n };
                     try self.seeds.append(seed);
                 }
             }
@@ -191,7 +191,7 @@ pub fn Almanac(comptime T: type) type {
             }
         }
 
-        fn mapSeed(self: *Self, src: isize, key: AlmanacKeys, seed_index: usize) !void {
+        fn mapSeed(self: *Self, src: isize, key: AlmanacKeys) !usize {
             const ranges: RangeList = self.maps.get(key).?;
             const v: usize = for (ranges.items) |range| {
                 const dst_start: isize = @intCast(range.dst_start);
@@ -203,26 +203,19 @@ pub fn Almanac(comptime T: type) type {
                 }
             } else @intCast(src);
 
-            switch (key) {
-                .fertilizer => self.seeds.items[seed_index].mappings.fertilizer = v,
-                .humidity => self.seeds.items[seed_index].mappings.humidity = v,
-                .light => self.seeds.items[seed_index].mappings.light = v,
-                .location => self.seeds.items[seed_index].mappings.location = v,
-                .soil => self.seeds.items[seed_index].mappings.soil = v,
-                .temperature => self.seeds.items[seed_index].mappings.temperature = v,
-                .water => self.seeds.items[seed_index].mappings.water = v,
-            }
+            return v;
         }
 
         fn mapSeeds(self: *Self) !void {
             for (self.seeds.items, 0..self.seeds.items.len) |seed, i| {
-                try self.mapSeed(@intCast(seed.id), AlmanacKeys.soil, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.soil), AlmanacKeys.fertilizer, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.fertilizer), AlmanacKeys.water, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.water), AlmanacKeys.light, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.light), AlmanacKeys.temperature, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.temperature), AlmanacKeys.humidity, i);
-                try self.mapSeed(@intCast(self.seeds.items[i].mappings.humidity), AlmanacKeys.location, i);
+                const soil = try self.mapSeed(@intCast(seed.id), AlmanacKeys.soil);
+                const fertilizer = try self.mapSeed(@intCast(soil), AlmanacKeys.fertilizer);
+                const water = try self.mapSeed(@intCast(fertilizer), AlmanacKeys.water);
+                const light = try self.mapSeed(@intCast(water), AlmanacKeys.light);
+                const temperature = try self.mapSeed(@intCast(light), AlmanacKeys.temperature);
+                const humidity = try self.mapSeed(@intCast(temperature), AlmanacKeys.humidity);
+                const location = try self.mapSeed(@intCast(humidity), AlmanacKeys.location);
+                self.seeds.items[i].location = location;
             }
         }
 
@@ -318,49 +311,25 @@ test "p1_seed_values" {
         if (s.id == 79) break s;
     } else unreachable;
     try std.testing.expectEqual(@as(usize, 79), seed_79.id);
-    try std.testing.expectEqual(@as(usize, 81), seed_79.mappings.soil);
-    try std.testing.expectEqual(@as(usize, 81), seed_79.mappings.fertilizer);
-    try std.testing.expectEqual(@as(usize, 81), seed_79.mappings.water);
-    try std.testing.expectEqual(@as(usize, 74), seed_79.mappings.light);
-    try std.testing.expectEqual(@as(usize, 78), seed_79.mappings.temperature);
-    try std.testing.expectEqual(@as(usize, 78), seed_79.mappings.humidity);
-    try std.testing.expectEqual(@as(usize, 82), seed_79.mappings.location);
+    try std.testing.expectEqual(@as(usize, 82), seed_79.location);
 
     const seed_14 = for (almanac.seeds.items) |s| {
         if (s.id == 14) break s;
     } else unreachable;
     try std.testing.expectEqual(@as(usize, 14), seed_14.id);
-    try std.testing.expectEqual(@as(usize, 14), seed_14.mappings.soil);
-    try std.testing.expectEqual(@as(usize, 53), seed_14.mappings.fertilizer);
-    try std.testing.expectEqual(@as(usize, 49), seed_14.mappings.water);
-    try std.testing.expectEqual(@as(usize, 42), seed_14.mappings.light);
-    try std.testing.expectEqual(@as(usize, 42), seed_14.mappings.temperature);
-    try std.testing.expectEqual(@as(usize, 43), seed_14.mappings.humidity);
-    try std.testing.expectEqual(@as(usize, 43), seed_14.mappings.location);
+    try std.testing.expectEqual(@as(usize, 43), seed_14.location);
 
     const seed_55 = for (almanac.seeds.items) |s| {
         if (s.id == 55) break s;
     } else unreachable;
     try std.testing.expectEqual(@as(usize, 55), seed_55.id);
-    try std.testing.expectEqual(@as(usize, 57), seed_55.mappings.soil);
-    try std.testing.expectEqual(@as(usize, 57), seed_55.mappings.fertilizer);
-    try std.testing.expectEqual(@as(usize, 53), seed_55.mappings.water);
-    try std.testing.expectEqual(@as(usize, 46), seed_55.mappings.light);
-    try std.testing.expectEqual(@as(usize, 82), seed_55.mappings.temperature);
-    try std.testing.expectEqual(@as(usize, 82), seed_55.mappings.humidity);
-    try std.testing.expectEqual(@as(usize, 86), seed_55.mappings.location);
+    try std.testing.expectEqual(@as(usize, 86), seed_55.location);
 
     const seed_13 = for (almanac.seeds.items) |s| {
         if (s.id == 13) break s;
     } else unreachable;
     try std.testing.expectEqual(@as(usize, 13), seed_13.id);
-    try std.testing.expectEqual(@as(usize, 13), seed_13.mappings.soil);
-    try std.testing.expectEqual(@as(usize, 52), seed_13.mappings.fertilizer);
-    try std.testing.expectEqual(@as(usize, 41), seed_13.mappings.water);
-    try std.testing.expectEqual(@as(usize, 34), seed_13.mappings.light);
-    try std.testing.expectEqual(@as(usize, 34), seed_13.mappings.temperature);
-    try std.testing.expectEqual(@as(usize, 35), seed_13.mappings.humidity);
-    try std.testing.expectEqual(@as(usize, 35), seed_13.mappings.location);
+    try std.testing.expectEqual(@as(usize, 35), seed_13.location);
 }
 
 test "p1_lowest" {
@@ -379,7 +348,7 @@ test "p1_lowest" {
 
     var lowest: usize = std.math.maxInt(usize);
     for (almanac.seeds.items) |seed| {
-        const location: usize = seed.mappings.location;
+        const location: usize = seed.location;
         if (location < lowest) lowest = location;
     }
 
@@ -402,7 +371,7 @@ test "p2_lowest" {
 
     var lowest: usize = std.math.maxInt(usize);
     for (almanac.seeds.items) |seed| {
-        const location: usize = seed.mappings.location;
+        const location: usize = seed.location;
         if (location < lowest) lowest = location;
     }
 
