@@ -100,16 +100,12 @@ pub fn Almanac(comptime T: type) type {
 
             key = null;
             while (it.next()) |line| {
-                // std.debug.print("{any}[{s}].len={d}\n", .{ key, line, line.len });
-
                 if (line.len > 0 and !std.ascii.isDigit(line[0])) {
                     var colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
                     const slice = line[0..colon_index];
                     var map_it = std.mem.split(T, slice, " ");
                     const key_slice = map_it.next() orelse return AlmanacErrors.ParseError;
-                    // std.debug.print("{any}<{s}>.len={d}; #SETKEY\n", .{ key, key_slice, key_slice.len });
                     key = AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
-                    std.debug.print("k<{s}>\n", .{key_slice});
                 } else {
                     var lo_ptr: *ListOuter = self.maps.getPtr(key.?) orelse return AlmanacErrors.InternalError;
                     var li: ListInner = std.ArrayList(usize).init(self.allocator);
@@ -118,16 +114,10 @@ pub fn Almanac(comptime T: type) type {
                     var n_it = std.mem.split(T, line, " ");
                     while (n_it.next()) |s| {
                         const n = try std.fmt.parseUnsigned(T, s, 10);
-                        // std.debug.print("{s}, {c}, {d}\n", .{ s, s, n });
-                        defer li.append(n) catch unreachable;
+                        try li.append(n);
                     }
-
-                    std.debug.print("l1> {any}\n", .{li.items});
-                    std.debug.print("l2> {any}\n", .{self.maps.getPtr(key.?).?.items});
                 }
             }
-
-            // std.debug.print("##############\n", .{});
         }
     };
 }
@@ -178,9 +168,7 @@ test "p1_mappings" {
     // checking first
     const seeds_to_soil_lo_ptr: ListOuter = almanac.maps.get(MapKeys.seeds_to_soil).?;
     try std.testing.expectEqual(@as(usize, 2), seeds_to_soil_lo_ptr.items.len);
-    std.debug.print("p1_mappings.seeds_to_soil_list>{any}\n", .{seeds_to_soil_lo_ptr.items});
     const seeds_to_soil_li_ptr: ListInner = seeds_to_soil_lo_ptr.items[0];
-    std.debug.print("p1_mappings>{any}\n", .{seeds_to_soil_li_ptr.items});
     try std.testing.expectEqual(@as(usize, 3), seeds_to_soil_li_ptr.items.len);
 
     const seeds_to_soil_slice_1 = seeds_to_soil_lo_ptr.items[0];
