@@ -96,6 +96,15 @@ pub fn Almanac(comptime T: type) type {
             return range;
         }
 
+        fn getKey(self: Self, line: []const T) !AlmanacKeys {
+            _ = self;
+            var colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
+            const slice = line[0..colon_index];
+            var map_it = std.mem.split(T, slice, " ");
+            const key_slice = map_it.next() orelse return AlmanacErrors.ParseError;
+            return AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
+        }
+
         pub fn parseInput(self: *Self, buffer: []const T) !void {
             var it = std.mem.tokenizeAny(T, buffer, "\n");
 
@@ -113,11 +122,7 @@ pub fn Almanac(comptime T: type) type {
             var key: AlmanacKeys = undefined;
             while (it.next()) |line| {
                 if (line.len > 0 and !std.ascii.isDigit(line[0])) {
-                    var colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
-                    const slice = line[0..colon_index];
-                    var map_it = std.mem.split(T, slice, " ");
-                    const key_slice = map_it.next() orelse return AlmanacErrors.ParseError;
-                    key = AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
+                    key = try self.getKey(line);
                 } else {
                     var rl_ptr: *RangeList = self.maps.getPtr(key) orelse return AlmanacErrors.InternalError;
                     const range = try self.parseRange(line);
