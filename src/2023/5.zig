@@ -12,7 +12,7 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = arena.allocator();
 
-    var almanac_p1: TypedAlmanac = try Almanac(T).init(allocator, false);
+    var almanac_p1: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac_p1.denit();
     try almanac_p1.solve(data);
 
@@ -22,7 +22,7 @@ pub fn main() !void {
         if (location < lowest_p1) lowest_p1 = location;
     }
 
-    var almanac_p2: TypedAlmanac = try Almanac(T).init(allocator, true);
+    var almanac_p2: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac_p2.denit();
     try almanac_p2.solve(data);
     const lowest_p2 = try almanac_p2.solveExpandSeedRanges();
