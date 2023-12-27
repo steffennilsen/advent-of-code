@@ -158,18 +158,11 @@ pub fn Almanac(comptime T: type) type {
         fn mapSeed(self: *Self, src: isize, key: AlmanacKeys, seed_index: usize) !void {
             const ranges: RangeList = self.maps.get(key).?;
             const v: usize = for (ranges.items) |range| {
-                // seeds: 79 14 55 13
-                // seed-to-soil map:
-                // 50 98 2
-                // 52 50 48
-                // (55 - 50) < 48
                 const dst_start: isize = @intCast(range.dst_start);
                 const src_start: isize = @intCast(range.src_start);
                 const len: isize = @intCast(range.len);
-                std.debug.print("i:{}> key:{} src:{} [{}, {}, {}]\n", .{ seed_index, key, src, dst_start, src_start, len });
                 if ((src >= src_start) and (src < (src_start + len))) {
                     const diff: isize = dst_start - (src_start - src);
-                    std.debug.print("diff: {}, {}\n", .{ diff, src + diff });
                     break @intCast(diff);
                 }
             } else @intCast(src);
@@ -292,9 +285,6 @@ test "p1_seed_values" {
     const seed_14 = for (almanac.seeds.items) |s| {
         if (s.id == 14) break s;
     } else unreachable;
-    std.debug.print("\n{any}\n", .{seed_14.id});
-    var it = seed_14.map.valueIterator();
-    while (it.next()) |v_ptr| std.debug.print("{any}\n", .{v_ptr.*});
     try std.testing.expectEqual(@as(usize, 14), seed_14.id);
     try std.testing.expectEqual(@as(usize, 7), seed_14.map.count());
     try std.testing.expectEqual(@as(usize, 14), seed_14.map.get(MapKeys.soil).?);
