@@ -321,3 +321,29 @@ test "p1_seed_values" {
     try std.testing.expectEqual(@as(usize, 35), seed_13.map.get(MapKeys.humidity).?);
     try std.testing.expectEqual(@as(usize, 35), seed_13.map.get(MapKeys.location).?);
 }
+
+test "p1_lowest" {
+    const T = u8;
+    const TypedAlmanac = Almanac(T);
+    const Seed = TypedAlmanac.Seed;
+    _ = Seed;
+    const MapKeys = TypedAlmanac.AlmanacKeys;
+    const RangeList = TypedAlmanac.RangeList;
+    _ = RangeList;
+
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
+    defer almanac.denit();
+    try almanac.solve(test_data);
+
+    var lowest: usize = std.math.maxInt(usize);
+    for (almanac.seeds.items) |seed| {
+        const location: usize = seed.map.get(MapKeys.location).?;
+        if (location < lowest) lowest = location;
+    }
+
+    try std.testing.expectEqual(@as(usize, 35), lowest);
+}
