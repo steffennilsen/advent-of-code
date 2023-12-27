@@ -78,19 +78,9 @@ pub fn Almanac(comptime T: type) type {
             len: usize,
         };
 
-        const Mappings = struct {
-            soil: usize = 0,
-            fertilizer: usize = 0,
-            water: usize = 0,
-            light: usize = 0,
-            temperature: usize = 0,
-            humidity: usize = 0,
-            location: usize = 0,
-        };
-
         const Seed = struct {
             id: usize,
-            mappings: Mappings = .{},
+            location: usize,
         };
 
         const AlmanacErrors = error{ ParseError, InternalError };
