@@ -103,7 +103,6 @@ pub fn Almanac(comptime T: type) type {
             var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
             var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
             var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-
             var seeds_it = std.mem.tokenizeAny(T, std.mem.trim(T, seeds_slice, " "), " ");
             while (seeds_it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
