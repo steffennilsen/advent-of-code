@@ -105,19 +105,23 @@ pub fn Almanac(comptime T: type) type {
             return AlmanacKeys.keyToEnum(key_slice) orelse return AlmanacErrors.ParseError;
         }
 
-        pub fn parseInput(self: *Self, buffer: []const T) !void {
-            var it = std.mem.tokenizeAny(T, buffer, "\n");
-
-            // seeds is a special case as the numbers are on the same line
-            var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
-            var seeds_colon_index = std.mem.indexOf(T, seeds_line, ":") orelse return AlmanacErrors.ParseError;
-            var seeds_slice = seeds_line[(seeds_colon_index + 1)..seeds_line.len];
-            var seeds_it = std.mem.tokenizeAny(T, std.mem.trim(T, seeds_slice, " "), " ");
+        fn parseSeeds(self: *Self, line: []const T) !void {
+            var seeds_colon_index = std.mem.indexOf(T, line, ":") orelse return AlmanacErrors.ParseError;
+            var slice = line[(seeds_colon_index + 1)..line.len];
+            var seeds_it = std.mem.tokenizeAny(T, std.mem.trim(T, slice, " "), " ");
             while (seeds_it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
                 const n = try std.fmt.parseUnsigned(usize, t, 10);
                 try self.seeds.append(n);
             }
+        }
+
+        pub fn parseInput(self: *Self, buffer: []const T) !void {
+            var it = std.mem.tokenizeAny(T, buffer, "\n");
+
+            // seeds is a special case as the numbers are on the same line
+            var seeds_line = it.next() orelse return AlmanacErrors.ParseError;
+            try self.parseSeeds(seeds_line);
 
             var key: AlmanacKeys = undefined;
             while (it.next()) |line| {
