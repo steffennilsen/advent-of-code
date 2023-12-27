@@ -2,7 +2,27 @@ const std = @import("std");
 const data = @embedFile("./5");
 const test_data = @embedFile("./5.test");
 
-pub fn main() !void {}
+pub fn main() !void {
+    const T = u8;
+    const TypedAlmanac = Almanac(T);
+    const MapKeys = TypedAlmanac.AlmanacKeys;
+
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    var almanac: TypedAlmanac = try Almanac(T).init(allocator);
+    defer almanac.denit();
+    try almanac.solve(data);
+
+    var lowest: usize = std.math.maxInt(usize);
+    for (almanac.seeds.items) |seed| {
+        const location: usize = seed.map.get(MapKeys.location).?;
+        if (location < lowest) lowest = location;
+    }
+
+    std.debug.print("part 1: {d}\n", .{lowest});
+}
 
 pub fn Almanac(comptime T: type) type {
     return struct {
@@ -325,11 +345,7 @@ test "p1_seed_values" {
 test "p1_lowest" {
     const T = u8;
     const TypedAlmanac = Almanac(T);
-    const Seed = TypedAlmanac.Seed;
-    _ = Seed;
     const MapKeys = TypedAlmanac.AlmanacKeys;
-    const RangeList = TypedAlmanac.RangeList;
-    _ = RangeList;
 
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
