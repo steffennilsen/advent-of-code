@@ -40,6 +40,12 @@ pub fn Almanac(comptime T: type) type {
             }
         };
 
+        const Range = struct {
+            dest_start: usize,
+            soure_start: usize,
+            len: usize,
+        };
+
         const AlmanacErrors = error{ ParseError, InternalError };
         const ListInner = std.ArrayList(usize);
         const ListOuter = std.ArrayList(ListInner);
