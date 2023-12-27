@@ -140,29 +140,12 @@ pub fn Almanac(comptime T: type) type {
             var slice = line[(seeds_colon_index + 1)..line.len];
             var it = std.mem.tokenizeAny(T, std.mem.trim(T, slice, " "), " ");
 
-            // if (self.seed_range) {
-            //     while (it.peek() != null) {
-            //         const start_str = it.next() orelse return AlmanacErrors.ParseError;
-            //         const start_trm = std.mem.trim(T, start_str, " ");
-            //         const start = try std.fmt.parseUnsigned(usize, start_trm, 10);
-
-            //         const len_str = it.next() orelse return AlmanacErrors.ParseError;
-            //         const len_trm = std.mem.trim(T, len_str, " ");
-            //         const len = try std.fmt.parseUnsigned(usize, len_trm, 10);
-
-            //         for (start..(start + len)) |n| {
-            //             const seed = Seed{ .id = n };
-            //             try self.seeds.append(seed);
-            //         }
-            //     }
-            // } else {
             while (it.next()) |s| {
                 const t = std.mem.trim(T, s, " ");
                 const n = try std.fmt.parseUnsigned(usize, t, 10);
                 const seed = Seed{ .id = n };
                 try self.seeds.append(seed);
             }
-            // }
         }
 
         fn parseInput(self: *Self, buffer: []const T) !void {
@@ -234,10 +217,11 @@ pub fn Almanac(comptime T: type) type {
                     const humidity = try self.mapSeed(@intCast(temperature), AlmanacKeys.humidity);
                     const location = try self.mapSeed(@intCast(humidity), AlmanacKeys.location);
 
-                    if (location < lowest) lowest = location;
+                    if (location < lowest) {
+                        lowest = location;
+                    }
                 }
             }
-
             return lowest;
         }
     };
@@ -375,8 +359,6 @@ test "p1_lowest" {
 test "p2_lowest" {
     const T = u8;
     const TypedAlmanac = Almanac(T);
-    const MapKeys = TypedAlmanac.AlmanacKeys;
-    _ = MapKeys;
 
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
