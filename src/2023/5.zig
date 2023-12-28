@@ -21,13 +21,14 @@ pub fn main() !void {
         const location: usize = seed.location;
         if (location < lowest_p1) lowest_p1 = location;
     }
+    std.debug.print("part 1: {d}\n", .{lowest_p1});
 
+    std.debug.print("part2: warning, this took 60m on my laptop\n", .{});
     var almanac_p2: TypedAlmanac = try Almanac(T).init(allocator);
     defer almanac_p2.denit();
     try almanac_p2.solve(data);
     const lowest_p2 = try almanac_p2.solveExpandSeedRanges();
 
-    std.debug.print("part 1: {d}\n", .{lowest_p1});
     std.debug.print("part 2: {d}\n", .{lowest_p2});
 }
 
