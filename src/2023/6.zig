@@ -5,8 +5,8 @@ const test_data = @embedFile("./6.test");
 const test_data_size = 3;
 
 const Race = struct {
-    time: u32,
-    distance: u32,
+    time: u64,
+    distance: u64,
 };
 
 pub fn main() !void {
@@ -14,15 +14,19 @@ pub fn main() !void {
     defer arena.deinit();
     var allocator = arena.allocator();
 
-    const races = try parseRaces(u8, allocator, data, data_size, false);
+    const races_p1 = try parseRaces(u8, allocator, data, data_size, false);
 
     var p1: usize = 1;
-    for (races.items) |race| {
+    for (races_p1.items) |race| {
         const rc = findRaceWinningCount(race);
         p1 *= rc;
     }
 
+    const races_p2 = try parseRaces(u8, allocator, data, data_size, true);
+    const p2 = findRaceWinningCount(races_p2.items[0]);
+
     std.debug.print("Part 1: {d}\n", .{p1});
+    std.debug.print("Part 2: {d}\n", .{p2});
 }
 
 fn findRaceWinningCount(race: Race) usize {
@@ -59,7 +63,7 @@ fn parseRaces(
     const time_line = it_nl.next() orelse unreachable;
     const distance_line = it_nl.next() orelse unreachable;
 
-    var time: [size]u32 = undefined;
+    var time: [size]u64 = undefined;
     @memset(&time, 0);
     var time_slice: []T = &[_]T{};
     var time_it = std.mem.tokenize(T, time_line, " ");
@@ -67,11 +71,11 @@ fn parseRaces(
     for (0..size) |i| {
         const slice: []const T = time_it.next() orelse unreachable;
         time_slice = try concat(T, allocator, time_slice, slice);
-        const n: u32 = try std.fmt.parseUnsigned(u32, slice, 10);
+        const n: u64 = try std.fmt.parseUnsigned(u64, slice, 10);
         time[i] = n;
     }
 
-    var distance: [size]u32 = undefined;
+    var distance: [size]u64 = undefined;
     @memset(&distance, 0);
     var distance_slice: []T = &[_]T{};
     var distance_it = std.mem.tokenize(T, distance_line, " ");
@@ -79,13 +83,13 @@ fn parseRaces(
     for (0..size) |i| {
         const slice = distance_it.next() orelse unreachable;
         distance_slice = try concat(T, allocator, distance_slice, slice);
-        const n: u32 = try std.fmt.parseUnsigned(u32, slice, 10);
+        const n: u64 = try std.fmt.parseUnsigned(u64, slice, 10);
         distance[i] = n;
     }
 
     if (compound_races) {
-        const compound_time = try std.fmt.parseUnsigned(u32, time_slice, 10);
-        const compound_distance = try std.fmt.parseUnsigned(u32, distance_slice, 10);
+        const compound_time = try std.fmt.parseUnsigned(u64, time_slice, 10);
+        const compound_distance = try std.fmt.parseUnsigned(u64, distance_slice, 10);
         const race = Race{
             .distance = compound_distance,
             .time = compound_time,
