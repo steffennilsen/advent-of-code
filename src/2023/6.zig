@@ -9,6 +9,24 @@ const Race = struct {
     distance: u32,
 };
 
+pub fn main() !void {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    var races = std.ArrayList(Race).init(allocator);
+    defer races.deinit();
+    try parseRaces(u8, data, data_size, &races);
+
+    var p1: usize = 1;
+    for (races.items) |race| {
+        const rc = findRaceWinningCount(race);
+        p1 *= rc;
+    }
+
+    std.debug.print("Part 1: {d}\n", .{p1});
+}
+
 fn findRaceWinningCount(race: Race) usize {
     var count: usize = 0;
 
@@ -33,7 +51,7 @@ fn parseRaces(comptime T: type, buffer: []const T, comptime size: usize, races: 
     _ = time_it.next(); // skip label
     for (0..size) |i| {
         const slice = time_it.next() orelse unreachable;
-        const n: u32 = try std.fmt.parseUnsigned(T, slice, 10);
+        const n: u32 = try std.fmt.parseUnsigned(u32, slice, 10);
         time[i] = n;
     }
 
@@ -43,7 +61,7 @@ fn parseRaces(comptime T: type, buffer: []const T, comptime size: usize, races: 
     _ = distance_it.next(); // skip label
     for (0..size) |i| {
         const slice = distance_it.next() orelse unreachable;
-        const n: u32 = try std.fmt.parseUnsigned(T, slice, 10);
+        const n: u32 = try std.fmt.parseUnsigned(u32, slice, 10);
         distance[i] = n;
     }
 
