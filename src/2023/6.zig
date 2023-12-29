@@ -129,3 +129,16 @@ test "p1" {
         try std.testing.expectEqual(expected, actual);
     }
 }
+
+test "p2" {
+    var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    const races = try parseRaces(u8, allocator, test_data, test_data_size, true);
+    {
+        const expected: usize = 71503;
+        const actual = findRaceWinningCount(races.items[0]);
+        try std.testing.expectEqual(expected, actual);
+    }
+}
