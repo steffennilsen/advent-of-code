@@ -104,7 +104,7 @@ fn parseRaces(
     return races;
 }
 
-test "p1_0" {
+test "p1" {
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     var allocator = arena.allocator();
