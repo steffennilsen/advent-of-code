@@ -65,7 +65,8 @@ fn cardsToHand(cards: [5]u8) Hand {
     return hand;
 }
 
-fn comparePlay(_: void, a: Play, b: Play) bool {
+fn comparePlay(comptime ctx: void, a: Play, b: Play) bool {
+    _ = ctx;
     if (a.hand != b.hand) {
         return @intFromEnum(a.hand) > @intFromEnum(b.hand);
     }
