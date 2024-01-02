@@ -4,6 +4,8 @@ const Errors = error{
     ParseError,
 };
 
+const Part = enum { One, Two };
+
 const Hand = enum(u8) {
     HighCard,
     OnePair,
@@ -15,7 +17,7 @@ const Hand = enum(u8) {
 };
 
 const Play = struct {
-    p1: usize,
+    bid_ranked: usize,
     bid: usize,
     cards: [5]u8,
     hand: Hand,
@@ -33,7 +35,8 @@ fn parseCard(c: u8) u8 {
     };
 }
 
-fn cardsToHand(cards: [5]u8) Hand {
+fn cardsToHand(cards: [5]u8, part: Part) Hand {
+    _ = part;
     var dist = [_]u8{ 1, 0, 0, 0, 0 };
     var j: usize = 4;
     jloop: while (j > 0) : (j -= 1) {
@@ -92,19 +95,21 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer arena.deinit();
     var allocator = arena.allocator();
+    const stdout = std.io.getStdOut().writer();
 
     const buffer = try readFile(allocator, "src/2023/7");
-    var plays = try parseBuffer(allocator, buffer);
-    defer plays.deinit();
 
-    solve_p1(&plays);
-
-    var p1: usize = 0;
-    for (plays.items) |play| p1 += play.p1;
-    debugPrint(plays);
-
-    const stdout = std.io.getStdOut().writer();
+    // PART 1
+    var plays_p1 = try parseBuffer(allocator, buffer, Part.One);
+    defer plays_p1.deinit();
+    const p1 = sortAndSumBids(&plays_p1);
     try stdout.print("Part 1: {d}\n", .{p1});
+
+    // PART 2
+    var plays_p2 = try parseBuffer(allocator, buffer, Part.Two);
+    defer plays_p2.deinit();
+    const p2 = sortAndSumBids(&plays_p2);
+    _ = p2;
 }
 
 fn readFile(allocator: std.mem.Allocator, sub_path: []const u8) ![]const u8 {
@@ -121,7 +126,7 @@ fn readFile(allocator: std.mem.Allocator, sub_path: []const u8) ![]const u8 {
     return buffer;
 }
 
-fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !std.ArrayList(Play) {
+fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8, part: Part) !std.ArrayList(Play) {
     var plays = std.ArrayList(Play).init(allocator);
 
     var i: usize = 0;
@@ -131,13 +136,13 @@ fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !std.ArrayList(
         const cards_slice: []const u8 = it2.next() orelse return Errors.ParseError;
         var cards: [5]u8 = undefined;
         std.mem.copy(u8, &cards, cards_slice);
-        const hand = cardsToHand(cards);
+        const hand = cardsToHand(cards, part);
 
         const bid_slice = it2.next() orelse return Errors.ParseError;
         const bid = try std.fmt.parseUnsigned(u32, bid_slice, 10);
 
         const play = Play{
-            .p1 = 0,
+            .bid_ranked = 0,
             .bid = bid,
             .cards = cards,
             .hand = hand,
@@ -148,12 +153,17 @@ fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !std.ArrayList(
     return plays;
 }
 
-pub fn solve_p1(plays: *std.ArrayList(Play)) void {
+pub fn sortAndSumBids(plays: *std.ArrayList(Play)) usize {
     std.mem.sort(Play, plays.items, {}, comparePlay);
 
+    var sum: usize = 0;
     for (0..plays.items.len) |i| {
-        plays.items[i].p1 = plays.items[i].bid * (i + 1);
+        const bid_ranked = plays.items[i].bid * (i + 1);
+        plays.items[i].bid_ranked = bid_ranked;
+        sum += bid_ranked;
     }
+
+    return sum;
 }
 
 test "p1_1" {
@@ -205,7 +215,7 @@ test "p1_2" {
     var plays = try parseBuffer(allocator, buffer);
     defer plays.deinit();
 
-    solve_p1(&plays);
+    sortAndSumBids(&plays);
 
     {
         const rank = 1;
