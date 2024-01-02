@@ -85,7 +85,15 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer arena.deinit();
     var allocator = arena.allocator();
-    _ = allocator;
+
+    const buffer = try readFile(allocator, "src/2023/7");
+    var plays = try parseBuffer(allocator, buffer);
+    defer plays.deinit();
+
+    solve_p1(&plays);
+
+    // const stdout = std.io.getStdOut().writer();
+
 }
 
 fn readFile(allocator: std.mem.Allocator, sub_path: []const u8) ![]const u8 {
@@ -225,5 +233,11 @@ test "p1_2" {
         try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
         try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
         try std.testing.expectEqual(@as(usize, 483 * rank), play.bid);
+    }
+
+    {
+        var sum: usize = 0;
+        for (plays.items) |play| sum += play.bid;
+        try std.testing.expectEqual(@as(usize, 6440), sum);
     }
 }
