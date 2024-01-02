@@ -65,8 +65,7 @@ fn cardsToHand(cards: [5]u8) Hand {
     return hand;
 }
 
-fn comparePlay(comptime ctx: void, a: Play, b: Play) bool {
-    _ = ctx;
+fn comparePlay(_: void, a: Play, b: Play) bool {
     if (a.hand != b.hand) {
         return @intFromEnum(a.hand) > @intFromEnum(b.hand);
     }
@@ -183,12 +182,12 @@ test "p1_2" {
     {
         const play: Play = plays.items[0];
         try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
-        try std.testing.expectEqual(Hand.OnePair, play.hand);
+        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
     }
 
     {
         const play: Play = plays.items[1];
-        try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
+        try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
         try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
     }
 
@@ -206,7 +205,7 @@ test "p1_2" {
 
     {
         const play: Play = plays.items[4];
-        try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
-        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
+        try std.testing.expect(std.mem.eql(u8, "32T3K", &play.cards));
+        try std.testing.expectEqual(Hand.OnePair, play.hand);
     }
 }
