@@ -100,7 +100,7 @@ pub fn main() !void {
     solve_p1(&plays);
 
     var p1: usize = 0;
-    for (plays.items) |play| p1 += play.bid;
+    for (plays.items) |play| p1 += play.p1;
     debugPrint(plays);
 
     const stdout = std.io.getStdOut().writer();
