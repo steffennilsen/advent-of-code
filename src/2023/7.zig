@@ -51,7 +51,7 @@ fn cardsToHand(cards: [5]u8) Hand {
 
     var hand: Hand = switch (dist[0]) {
         5 => Hand.FiveOfAKind,
-        4 => Hand.FiveOfAKind,
+        4 => Hand.FourOfAKind,
         3 => blk: {
             if (dist[1] == 2) break :blk Hand.FullHouse;
             break :blk Hand.ThreeOfAKind;
