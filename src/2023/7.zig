@@ -183,6 +183,7 @@ test "p1_2" {
         const play: Play = plays.items[0];
         try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
         try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
+        try std.testing.expectEqual(@as(usize, 483 * 5), play.bid);
     }
 
     {
