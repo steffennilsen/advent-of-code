@@ -15,6 +15,7 @@ const Hand = enum(u8) {
 };
 
 const Play = struct {
+    p1: usize,
     bid: usize,
     cards: [5]u8,
     hand: Hand,
@@ -79,9 +80,15 @@ fn comparePlay(_: void, a: Play, b: Play) bool {
     return false;
 }
 
+fn debugPrint(plays: std.ArrayList(Play)) void {
+    for (plays.items, 0..) |play, i| {
+        std.debug.print("{d}> cards: {s}, bid: {d}, p1: {d}, hand: {}\n", .{ (i + 1), play.cards, play.bid, play.p1, play.hand });
+    }
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer gpa.deinit();
+    defer _ = gpa.deinit();
     var arena = std.heap.ArenaAllocator.init(gpa.allocator());
     defer arena.deinit();
     var allocator = arena.allocator();
@@ -92,8 +99,12 @@ pub fn main() !void {
 
     solve_p1(&plays);
 
-    // const stdout = std.io.getStdOut().writer();
+    var p1: usize = 0;
+    for (plays.items) |play| p1 += play.bid;
+    debugPrint(plays);
 
+    const stdout = std.io.getStdOut().writer();
+    try stdout.print("Part 1: {d}\n", .{p1});
 }
 
 fn readFile(allocator: std.mem.Allocator, sub_path: []const u8) ![]const u8 {
@@ -126,6 +137,7 @@ fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !std.ArrayList(
         const bid = try std.fmt.parseUnsigned(u32, bid_slice, 10);
 
         const play = Play{
+            .p1 = 0,
             .bid = bid,
             .cards = cards,
             .hand = hand,
@@ -140,7 +152,7 @@ pub fn solve_p1(plays: *std.ArrayList(Play)) void {
     std.mem.sort(Play, plays.items, {}, comparePlay);
 
     for (0..plays.items.len) |i| {
-        plays.items[i].bid *= (i + 1);
+        plays.items[i].p1 = plays.items[i].bid * (i + 1);
     }
 }
 
@@ -200,7 +212,8 @@ test "p1_2" {
         const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "32T3K", &play.cards));
         try std.testing.expectEqual(Hand.OnePair, play.hand);
-        try std.testing.expectEqual(@as(usize, 765 * rank), play.bid);
+        try std.testing.expectEqual(@as(usize, 765), play.bid);
+        try std.testing.expectEqual(@as(usize, 765 * rank), play.p1);
     }
 
     {
@@ -208,7 +221,8 @@ test "p1_2" {
         const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "KTJJT", &play.cards));
         try std.testing.expectEqual(Hand.TwoPair, play.hand);
-        try std.testing.expectEqual(@as(usize, 220 * rank), play.bid);
+        try std.testing.expectEqual(@as(usize, 220), play.bid);
+        try std.testing.expectEqual(@as(usize, 220 * rank), play.p1);
     }
 
     {
@@ -216,7 +230,8 @@ test "p1_2" {
         const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "KK677", &play.cards));
         try std.testing.expectEqual(Hand.TwoPair, play.hand);
-        try std.testing.expectEqual(@as(usize, 28 * rank), play.bid);
+        try std.testing.expectEqual(@as(usize, 28), play.bid);
+        try std.testing.expectEqual(@as(usize, 28 * rank), play.p1);
     }
 
     {
@@ -224,7 +239,8 @@ test "p1_2" {
         const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
         try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
-        try std.testing.expectEqual(@as(usize, 684 * rank), play.bid);
+        try std.testing.expectEqual(@as(usize, 684), play.bid);
+        try std.testing.expectEqual(@as(usize, 684 * rank), play.p1);
     }
 
     {
@@ -232,12 +248,13 @@ test "p1_2" {
         const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
         try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
-        try std.testing.expectEqual(@as(usize, 483 * rank), play.bid);
+        try std.testing.expectEqual(@as(usize, 483), play.bid);
+        try std.testing.expectEqual(@as(usize, 483 * rank), play.p1);
     }
 
     {
-        var sum: usize = 0;
-        for (plays.items) |play| sum += play.bid;
-        try std.testing.expectEqual(@as(usize, 6440), sum);
+        var p1: usize = 0;
+        for (plays.items) |play| p1 += play.p1;
+        try std.testing.expectEqual(@as(usize, 6440), p1);
     }
 }
