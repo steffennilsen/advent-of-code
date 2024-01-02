@@ -24,10 +24,10 @@ fn parseCard(c: u8) u8 {
     return switch (c) {
         '0'...'9' => c - '0',
         'T' => 10,
-        'J' => 10,
-        'Q' => 10,
-        'K' => 10,
-        'A' => 10,
+        'J' => 11,
+        'Q' => 12,
+        'K' => 13,
+        'A' => 14,
         else => 0,
     };
 }
@@ -67,7 +67,7 @@ fn cardsToHand(cards: [5]u8) Hand {
 
 fn comparePlay(_: void, a: Play, b: Play) bool {
     if (a.hand != b.hand) {
-        return @intFromEnum(a.hand) > @intFromEnum(b.hand);
+        return @intFromEnum(a.hand) < @intFromEnum(b.hand);
     }
 
     for (0..5) |i| {
@@ -128,6 +128,14 @@ fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !std.ArrayList(
     return plays;
 }
 
+pub fn solve_p1(plays: *std.ArrayList(Play)) void {
+    std.mem.sort(Play, plays.items, {}, comparePlay);
+
+    for (0..plays.items.len) |i| {
+        plays.items[i].bid *= (i + 1);
+    }
+}
+
 test "p1_1" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
@@ -174,39 +182,48 @@ test "p1_2" {
     var allocator = arena.allocator();
 
     const buffer = try readFile(allocator, "src/2023/7.test");
-    const plays = try parseBuffer(allocator, buffer);
+    var plays = try parseBuffer(allocator, buffer);
     defer plays.deinit();
 
-    std.mem.sort(Play, plays.items, {}, comparePlay);
+    solve_p1(&plays);
 
     {
-        const play: Play = plays.items[0];
-        try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
-        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
-        try std.testing.expectEqual(@as(usize, 483 * 5), play.bid);
-    }
-
-    {
-        const play: Play = plays.items[1];
-        try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
-        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
-    }
-
-    {
-        const play: Play = plays.items[2];
-        try std.testing.expect(std.mem.eql(u8, "KK677", &play.cards));
-        try std.testing.expectEqual(Hand.TwoPair, play.hand);
-    }
-
-    {
-        const play: Play = plays.items[3];
-        try std.testing.expect(std.mem.eql(u8, "KTJJT", &play.cards));
-        try std.testing.expectEqual(Hand.TwoPair, play.hand);
-    }
-
-    {
-        const play: Play = plays.items[4];
+        const rank = 1;
+        const play: Play = plays.items[rank - 1];
         try std.testing.expect(std.mem.eql(u8, "32T3K", &play.cards));
         try std.testing.expectEqual(Hand.OnePair, play.hand);
+        try std.testing.expectEqual(@as(usize, 765 * rank), play.bid);
+    }
+
+    {
+        const rank = 2;
+        const play: Play = plays.items[rank - 1];
+        try std.testing.expect(std.mem.eql(u8, "KTJJT", &play.cards));
+        try std.testing.expectEqual(Hand.TwoPair, play.hand);
+        try std.testing.expectEqual(@as(usize, 220 * rank), play.bid);
+    }
+
+    {
+        const rank = 3;
+        const play: Play = plays.items[rank - 1];
+        try std.testing.expect(std.mem.eql(u8, "KK677", &play.cards));
+        try std.testing.expectEqual(Hand.TwoPair, play.hand);
+        try std.testing.expectEqual(@as(usize, 28 * rank), play.bid);
+    }
+
+    {
+        const rank = 4;
+        const play: Play = plays.items[rank - 1];
+        try std.testing.expect(std.mem.eql(u8, "T55J5", &play.cards));
+        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
+        try std.testing.expectEqual(@as(usize, 684 * rank), play.bid);
+    }
+
+    {
+        const rank = 5;
+        const play: Play = plays.items[rank - 1];
+        try std.testing.expect(std.mem.eql(u8, "QQQJA", &play.cards));
+        try std.testing.expectEqual(Hand.ThreeOfAKind, play.hand);
+        try std.testing.expectEqual(@as(usize, 483 * rank), play.bid);
     }
 }
