@@ -6,13 +6,6 @@ const Node = struct {
     r: *Node,
 };
 
-// fn Map(comptime dir_len: usize, comptime nodes_len: usize) type {
-//     return struct {
-//         directions: [dir_len]u8,
-//         Nodes: [nodes_len]Node,
-//     };
-// }
-
 const Map = struct {
     directions: []const u8,
     nodes: std.StringArrayHashMap(Node),
@@ -46,8 +39,17 @@ const Map = struct {
 };
 
 pub fn main() !void {
-    const data: []const u8 = @embedFile("./8");
-    _ = data;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    var arena = std.heap.ArenaAllocator.init(gpa.allocator());
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    const buffer: []const u8 = @embedFile("./8");
+    const map = try parseBuffer(allocator, buffer);
+    const p1 = map.traverse();
+
+    std.debug.print("Part 1: {d}\n", .{p1});
 }
 
 fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !Map {
