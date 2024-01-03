@@ -1,65 +1,90 @@
 const std = @import("std");
 
 const Node = struct {
-    L: ?*Node,
-    R: ?*Node,
+    id: [3]u8,
+    l: *Node,
+    r: *Node,
 };
 
-fn Map(comptime dir_len: usize, comptime nodes_len: usize) type {
-    return struct {
-        directions: [dir_len]u8,
-        Nodes: [nodes_len]Node,
-    };
-}
+// fn Map(comptime dir_len: usize, comptime nodes_len: usize) type {
+//     return struct {
+//         directions: [dir_len]u8,
+//         Nodes: [nodes_len]Node,
+//     };
+// }
+
+const Map = struct {
+    directions: []const u8,
+    nodes: std.StringArrayHashMap(Node),
+
+    fn deinit(self: Map) !void {
+        self.nodes.deinit();
+    }
+
+    fn traverse(self: Map) usize {
+        const zzz = self.nodes.getPtr("ZZZ") orelse unreachable;
+        var node = self.nodes.getPtr("AAA") orelse unreachable;
+
+        var steps: usize = 0;
+        outer: while (true) {
+            for (self.directions) |c| {
+                if (node == zzz) {
+                    break :outer;
+                }
+
+                switch (c) {
+                    'L' => node = node.l,
+                    'R' => node = node.r,
+                    else => unreachable,
+                }
+                steps += 1;
+            }
+        }
+
+        return steps;
+    }
+};
 
 pub fn main() !void {
     const data: []const u8 = @embedFile("./8");
     _ = data;
 }
 
-fn getOrPutNode(map: *std.StringHashMap(Node), key: []const u8) !Node {
-    const v = try map.getOrPut(key);
-    if (!v.found_existing) {
-        v.value_ptr.* = Node{ .L = null, .R = null };
-    }
-    return v.value_ptr.*;
-}
-
-fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !void {
+fn parseBuffer(allocator: std.mem.Allocator, buffer: []const u8) !Map {
     var line_it = std.mem.tokenize(u8, buffer, "\n");
     const directions: []const u8 = line_it.next().?;
-    _ = directions;
 
-    var map = std.StringHashMap(Node).init(allocator);
-    defer map.deinit();
-
+    var nodes = std.StringArrayHashMap(Node).init(allocator);
+    const nodes_index = line_it.index;
     while (line_it.next()) |line| {
-        const n_slice = line[0..3];
-        const l_slice = line[7..10];
-        const r_slice = line[12..15];
-
-        const l = try getOrPutNode(&map, l_slice);
-        const r = try getOrPutNode(&map, l_slice);
-        const n = try getOrPutNode(&map, l_slice);
-
-        const n_mr = try map.getOrPut(n_slice);
-        if (!n_mr.found_existing) {
-            n_mr.value_ptr.* = Node{ .L = undefined, .R = undefined };
-        }
-        const n = n_mr.value_ptr.*;
-        _ = n;
-
-        try map.put(n_slice, .{ l_slice, r_slice });
-        std.debug.print("{s}, {s}, {s}\n", .{ n_slice, l_slice, r_slice });
+        var id = line[0..3];
+        try nodes.put(id, Node{ .id = id.*, .l = undefined, .r = undefined });
     }
 
-    const maps = [map.count()]Map;
-    @memset(&maps, Node{});
-
-    var node_key_it = map.valueIterator();
-    while (node_key_it) |key| {
-        _ = key;
+    line_it.index = nodes_index;
+    while (line_it.next()) |line| {
+        const node = nodes.getPtr(line[0..3]) orelse unreachable;
+        const l = nodes.getPtr(line[7..10]) orelse unreachable;
+        const r = nodes.getPtr(line[12..15]) orelse unreachable;
+        node.*.l = l;
+        node.*.r = r;
     }
+
+    // var it = nodes.iterator();
+    // while (it.next()) |e| {
+    //     printNode(e.value_ptr.*);
+    // }
+
+    const map = Map{ .directions = directions, .nodes = nodes };
+    return map;
+}
+
+fn printNode(node: Node) void {
+    std.debug.print("[id: {s}, l: {s}, r: {s}]\n", .{
+        node.id,
+        node.l.*.id,
+        node.r.*.id,
+    });
 }
 
 test "p1_1" {
@@ -68,5 +93,26 @@ test "p1_1" {
     var allocator = arena.allocator();
 
     const buffer: []const u8 = @embedFile("./8-1.test");
-    try parseBuffer(allocator, buffer);
+    const map = try parseBuffer(allocator, buffer);
+
+    try std.testing.expect(std.mem.eql(u8, "RL", map.directions));
+    try std.testing.expectEqual(@as(usize, 7), map.nodes.count());
+
+    const steps = map.traverse();
+    try std.testing.expectEqual(@as(usize, 2), steps);
+}
+
+test "p1_2" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    var allocator = arena.allocator();
+
+    const buffer: []const u8 = @embedFile("./8-2.test");
+    const map = try parseBuffer(allocator, buffer);
+
+    try std.testing.expect(std.mem.eql(u8, "LLR", map.directions));
+    try std.testing.expectEqual(@as(usize, 3), map.nodes.count());
+
+    const steps = map.traverse();
+    try std.testing.expectEqual(@as(usize, 6), steps);
 }
